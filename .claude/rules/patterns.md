@@ -2,54 +2,78 @@
 
 ## APIレスポンス形式
 
+docs/04.API型定義.md で定義済み。ページネーションとエラーの共通型:
+
 ```typescript
-interface ApiResponse<T> {
-  success: boolean
-  data?: T
-  error?: string
-  meta?: {
-    total: number
-    page: number
-    limit: number
+// ページネーション
+type PaginatedResponse<T> = {
+  data: T[]
+  total: number
+  page: number
+  limit: number
+}
+
+// エラー
+type ErrorResponse = {
+  error: {
+    code: string    // "NOT_FOUND", "UNAUTHORIZED", "VALIDATION_ERROR" 等
+    message: string
   }
 }
 ```
 
-## カスタムフックパターン
+## Hono ルートパターン
 
 ```typescript
-export function useDebounce<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
+import { Hono } from 'hono'
+import { zValidator } from '@hono/zod-validator'
+import { z } from 'zod'
 
-  useEffect(() => {
-    const handler = setTimeout(() => setDebouncedValue(value), delay)
-    return () => clearTimeout(handler)
-  }, [value, delay])
+const app = new Hono()
 
-  return debouncedValue
+// バリデーション付きルート
+app.post('/feeds',
+  zValidator('json', z.object({ url: z.string().url() })),
+  async (c) => {
+    const { url } = c.req.valid('json')
+    const feed = await feedService.create(url)
+    return c.json(feed, 201)
+  }
+)
+```
+
+## サービスレイヤーパターン
+
+ルートハンドラからビジネスロジックを分離:
+
+```typescript
+// services/feed/src/services/feed-service.ts
+export class FeedService {
+  constructor(private db: DrizzleDB) {}
+
+  async create(url: string): Promise<Feed> {
+    // ビジネスロジック
+  }
 }
 ```
 
-## リポジトリパターン
+## JWT検証ミドルウェア
 
 ```typescript
-interface Repository<T> {
-  findAll(filters?: Filters): Promise<T[]>
-  findById(id: string): Promise<T | null>
-  create(data: CreateDto): Promise<T>
-  update(id: string, data: UpdateDto): Promise<T>
-  delete(id: string): Promise<void>
-}
+import { createMiddleware } from 'hono/factory'
+import { jwtVerify, createRemoteJWKSet } from 'jose'
+
+const JWKS = createRemoteJWKSet(new URL('http://localhost:3000/auth/.well-known/jwks.json'))
+
+export const authMiddleware = createMiddleware(async (c, next) => {
+  const token = c.req.header('Authorization')?.replace('Bearer ', '')
+  if (!token) throw new HTTPException(401)
+  const { payload } = await jwtVerify(token, JWKS)
+  c.set('user', payload)
+  await next()
+})
 ```
 
-## スケルトンプロジェクト
+## OpenAPI との整合性
 
-新しい機能を実装する場合:
-1. 実績のあるスケルトンプロジェクトを検索する
-2. 並列エージェントを使用してオプションを評価する:
-   - セキュリティ評価
-   - 拡張性分析
-   - 関連性スコアリング
-   - 実装計画
-3. 最適なものをクローンして基盤にする
-4. 実績のある構造の中でイテレーションする
+実装は `openapi/` 配下の仕様に完全準拠すること。型の不一致があれば実装側を修正する。

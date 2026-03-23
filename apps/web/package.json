@@ -1,0 +1,32 @@
+{
+  "name": "@bookmark-rss/web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vinxi dev --port 5173",
+    "build": "vinxi build",
+    "start": "vinxi start",
+    "test": "vitest run",
+    "lint": "eslint src/",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-router": "^1.100.0",
+    "@tanstack/start": "^1.100.0",
+    "@tanstack/react-query": "^5.64.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-markdown": "^9.0.0",
+    "tailwindcss": "^4.0.0",
+    "vinxi": "^0.5.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "eslint": "^9.0.0",
+    "vite-plugin-pwa": "^0.21.0"
+  }
+}

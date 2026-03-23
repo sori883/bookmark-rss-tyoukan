@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: bookmark-rss-db
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: bookmark
+      POSTGRES_PASSWORD: bookmark
+      POSTGRES_DB: bookmark_rss
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bookmark"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  pgdata:

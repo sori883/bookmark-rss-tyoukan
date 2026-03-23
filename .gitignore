@@ -1,3 +1,45 @@
+# OS
 .DS_Store
-reference/
+
+# 環境変数
 .env
+.env.local
+.env.*.local
+
+# reference（セットアップ後は不要）
+reference/
+
+# ─── TypeScript / Node.js ──────────────────────────────
+node_modules/
+dist/
+*.tsbuildinfo
+.vinxi/
+
+# ─── Python ────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.uv/
+
+# ─── Rust ──────────────────────────────────────────────
+target/
+
+# ─── IDE ───────────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ─── Docker ────────────────────────────────────────────
+docker-compose.override.yml
+
+# ─── テスト・カバレッジ ──────────────────────────────────
+coverage/
+.nyc_output/
+htmlcov/
+.pytest_cache/
+
+# ─── ビルド・デプロイ ────────────────────────────────────
+cdk.out/
+.vercel/
