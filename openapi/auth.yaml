@@ -1,0 +1,231 @@
+openapi: 3.1.0
+info:
+  title: Auth Service API
+  version: 0.0.1
+  description: 認証基盤 — Google OAuth, JWT発行, JWKS公開
+
+servers:
+  - url: http://localhost:3000
+    description: ローカル開発
+
+paths:
+  /auth/google:
+    get:
+      summary: Google OAuth開始
+      description: Google認可URLを返却しリダイレクト
+      operationId: startGoogleOAuth
+      responses:
+        "302":
+          description: Google認可ページにリダイレクト
+
+  /auth/google/callback:
+    get:
+      summary: Google OAuthコールバック
+      description: 認可コード受け取り → JWT発行
+      operationId: googleOAuthCallback
+      parameters:
+        - name: code
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: state
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: JWT発行成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+
+  /auth/service-token:
+    post:
+      summary: サービスJWT発行
+      description: client_id + client_secret でサービス間認証用JWT発行
+      operationId: issueServiceToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ServiceTokenRequest"
+      responses:
+        "200":
+          description: サービスJWT発行成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ServiceTokenResponse"
+        "401":
+          description: 認証失敗
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/.well-known/jwks.json:
+    get:
+      summary: JWKS公開鍵
+      description: ユーザーJWT・サービスJWT共通の公開鍵
+      operationId: getJWKS
+      responses:
+        "200":
+          description: JWKS
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JWKSResponse"
+
+  /auth/refresh:
+    post:
+      summary: トークンリフレッシュ
+      operationId: refreshToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RefreshRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RefreshResponse"
+
+  /auth/me:
+    get:
+      summary: 認証ユーザ情報
+      operationId: getAuthMe
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMeResponse"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/logout:
+    post:
+      summary: ログアウト
+      operationId: logout
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: ログアウト成功
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ServiceTokenRequest:
+      type: object
+      required: [client_id, client_secret]
+      properties:
+        client_id:
+          type: string
+        client_secret:
+          type: string
+
+    ServiceTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
+          description: 秒（例: 86400 = 24h）
+
+    TokenResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+
+    RefreshRequest:
+      type: object
+      required: [refresh_token]
+      properties:
+        refresh_token:
+          type: string
+
+    RefreshResponse:
+      type: object
+      required: [access_token, refresh_token, expires_in]
+      properties:
+        access_token:
+          type: string
+        refresh_token:
+          type: string
+        expires_in:
+          type: integer
+
+    AuthMeResponse:
+      type: object
+      required: [id, email, name]
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        name:
+          type: string
+
+    JWKSResponse:
+      type: object
+      required: [keys]
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            properties:
+              kty:
+                type: string
+              kid:
+                type: string
+              alg:
+                type: string
+              n:
+                type: string
+              e:
+                type: string
+              use:
+                type: string
+                enum: [sig]
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string

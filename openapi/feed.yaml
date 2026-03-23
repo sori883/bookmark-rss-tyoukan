@@ -1,0 +1,480 @@
+openapi: 3.1.0
+info:
+  title: Feed Service API
+  version: 0.0.1
+  description: フィードCRUD, RSS記事管理, ブックマーク管理（内部API）
+
+servers:
+  - url: http://localhost:3001
+    description: ローカル開発
+
+paths:
+  /feeds:
+    post:
+      summary: フィード登録
+      operationId: createFeed
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateFeedRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedResponse"
+    get:
+      summary: フィード一覧
+      operationId: listFeeds
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/FeedResponse"
+
+  /feeds/{id}:
+    delete:
+      summary: フィード削除
+      operationId: deleteFeed
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: 削除成功
+
+  /feeds/fetch:
+    post:
+      summary: RSS定期取得実行
+      operationId: fetchFeeds
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FetchFeedsRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FetchFeedsResponse"
+
+  /feeds/import-opml:
+    post:
+      summary: OPMLインポート
+      operationId: importOpml
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ImportOpmlResponse"
+
+  /articles:
+    post:
+      summary: 記事保存
+      operationId: createArticle
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateArticleRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleResponse"
+    get:
+      summary: 記事一覧
+      operationId: listArticles
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: feed_id
+          in: query
+          schema:
+            type: string
+        - name: is_read
+          in: query
+          schema:
+            type: boolean
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedArticles"
+
+  /articles/{id}:
+    get:
+      summary: 記事詳細
+      operationId: getArticle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleResponse"
+    patch:
+      summary: 記事更新（既読）
+      operationId: updateArticle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateArticleRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleResponse"
+    delete:
+      summary: 記事削除
+      operationId: deleteArticle
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: 削除成功
+
+  /bookmarks:
+    post:
+      summary: ブックマーク登録
+      description: article_id or URL → 本文抽出・保存
+      operationId: createBookmark
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateBookmarkRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookmarkResponse"
+    get:
+      summary: ブックマーク一覧
+      operationId: listBookmarks
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBookmarks"
+
+  /bookmarks/search:
+    get:
+      summary: ブックマーク全文検索
+      operationId: searchBookmarks
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/PageParam"
+        - $ref: "#/components/parameters/LimitParam"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedBookmarks"
+
+  /bookmarks/{id}:
+    get:
+      summary: ブックマーク詳細
+      operationId: getBookmark
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BookmarkResponse"
+    delete:
+      summary: ブックマーク削除
+      operationId: deleteBookmark
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/IdParam"
+      responses:
+        "204":
+          description: 削除成功
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    IdParam:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+        format: uuid
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        default: 1
+        minimum: 1
+    LimitParam:
+      name: limit
+      in: query
+      schema:
+        type: integer
+        default: 20
+        minimum: 1
+        maximum: 100
+
+  schemas:
+    CreateFeedRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+          format: uri
+
+    FeedResponse:
+      type: object
+      required: [id, user_id, url, title, site_url, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        title:
+          type: string
+        site_url:
+          type: string
+        last_fetched_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+
+    FetchFeedsRequest:
+      type: object
+      properties:
+        feed_id:
+          type: string
+          format: uuid
+
+    FetchFeedsResponse:
+      type: object
+      required: [fetched_count, new_articles_count]
+      properties:
+        fetched_count:
+          type: integer
+        new_articles_count:
+          type: integer
+
+    ImportOpmlResponse:
+      type: object
+      required: [imported_count, feeds]
+      properties:
+        imported_count:
+          type: integer
+        feeds:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeedResponse"
+
+    CreateArticleRequest:
+      type: object
+      required: [feed_id, url, title, published_at]
+      properties:
+        feed_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        title:
+          type: string
+        published_at:
+          type: string
+          format: date-time
+
+    ArticleResponse:
+      type: object
+      required: [id, user_id, feed_id, url, title, is_read, published_at, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        feed_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+        title:
+          type: string
+        is_read:
+          type: boolean
+        published_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    UpdateArticleRequest:
+      type: object
+      properties:
+        is_read:
+          type: boolean
+
+    PaginatedArticles:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/ArticleResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    CreateBookmarkRequest:
+      type: object
+      properties:
+        article_id:
+          type: string
+          format: uuid
+        url:
+          type: string
+
+    BookmarkResponse:
+      type: object
+      required: [id, user_id, url, title, content_markdown, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        article_id:
+          type: string
+          format: uuid
+          nullable: true
+        url:
+          type: string
+        title:
+          type: string
+        content_markdown:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    PaginatedBookmarks:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/BookmarkResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+            message:
+              type: string

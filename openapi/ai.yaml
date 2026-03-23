@@ -1,0 +1,81 @@
+openapi: 3.1.0
+info:
+  title: AI Service API
+  version: 0.0.1
+  description: 記事選定・要約（EventBridgeから定期呼び出し）
+
+servers:
+  - url: http://localhost:3003
+    description: ローカル開発
+
+paths:
+  /digest:
+    post:
+      summary: 定期実行トリガー
+      description: feedから記事取得 → 選定・要約 → notification送信
+      operationId: runDigest
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DigestRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DigestResponse"
+
+  /health:
+    get:
+      summary: ヘルスチェック
+      operationId: healthCheck
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    DigestRequest:
+      type: object
+      properties:
+        since:
+          type: string
+          format: date-time
+          description: 省略時は前日分
+
+    DigestResponse:
+      type: object
+      required: [selected_count, notified, articles]
+      properties:
+        selected_count:
+          type: integer
+        notified:
+          type: boolean
+        articles:
+          type: array
+          items:
+            type: object
+            required: [url, title, summary]
+            properties:
+              url:
+                type: string
+              title:
+                type: string
+              summary:
+                type: string

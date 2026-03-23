@@ -1,0 +1,159 @@
+openapi: 3.1.0
+info:
+  title: Notification Service API
+  version: 0.0.1
+  description: Webhook送信, 通知履歴管理（内部API）
+
+servers:
+  - url: http://localhost:3004
+    description: ローカル開発
+
+paths:
+  /notify:
+    post:
+      summary: 通知送信
+      description: Webhook送信 + 通知履歴DB保存
+      operationId: sendNotification
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NotifyRequest"
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotifyResponse"
+
+  /notifications:
+    get:
+      summary: 通知履歴一覧
+      operationId: listNotifications
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: is_read
+          in: query
+          schema:
+            type: boolean
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+            minimum: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PaginatedNotifications"
+
+  /notifications/{id}:
+    patch:
+      summary: 通知既読
+      operationId: updateNotification
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateNotificationRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationResponse"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    NotifyRequest:
+      type: object
+      required: [user_id, message]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+          description: 要約+URL一覧を含むダイジェストテキスト
+
+    NotifyResponse:
+      type: object
+      required: [id, webhook_sent]
+      properties:
+        id:
+          type: string
+          format: uuid
+        webhook_sent:
+          type: boolean
+
+    NotificationResponse:
+      type: object
+      required: [id, user_id, type, message, is_read, sent_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        type:
+          type: string
+          enum: [webhook]
+        message:
+          type: string
+        is_read:
+          type: boolean
+        sent_at:
+          type: string
+          format: date-time
+
+    UpdateNotificationRequest:
+      type: object
+      required: [is_read]
+      properties:
+        is_read:
+          type: boolean
+
+    PaginatedNotifications:
+      type: object
+      required: [data, total, page, limit]
+      properties:
+        data:
+          type: array
+          items:
+            $ref: "#/components/schemas/NotificationResponse"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
