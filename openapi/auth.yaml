@@ -2,28 +2,64 @@ openapi: 3.1.0
 info:
   title: Auth Service API
   version: 0.0.1
-  description: 認証基盤 — Google OAuth, JWT発行, JWKS公開
+  description: |
+    認証基盤 — Google OAuth, JWT発行, JWKS公開
+    Better Auth ベース。OAuth・セッション管理は Better Auth が提供し、
+    サービスJWT発行・JWKS公開はカスタム実装。
 
 servers:
   - url: http://localhost:3000
     description: ローカル開発
 
 paths:
-  /auth/google:
-    get:
+  /auth/sign-in/social:
+    post:
       summary: Google OAuth開始
-      description: Google認可URLを返却しリダイレクト
+      description: |
+        Better Auth のソーシャルログインエンドポイント。
+        provider=google を指定して Google 認可フローを開始する。
+        callbackURL でコールバック先を指定。
       operationId: startGoogleOAuth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [provider, callbackURL]
+              properties:
+                provider:
+                  type: string
+                  enum: [google]
+                callbackURL:
+                  type: string
+                  description: OAuth完了後のリダイレクト先URL
       responses:
-        "302":
-          description: Google認可ページにリダイレクト
+        "200":
+          description: 認可URLを返却
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    description: Google認可ページURL
+                  redirect:
+                    type: boolean
 
-  /auth/google/callback:
+  /auth/callback/{provider}:
     get:
-      summary: Google OAuthコールバック
-      description: 認可コード受け取り → JWT発行
-      operationId: googleOAuthCallback
+      summary: OAuthコールバック
+      description: Better Auth が処理するOAuthコールバック
+      operationId: oauthCallback
       parameters:
+        - name: provider
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [google]
         - name: code
           in: query
           required: true
@@ -33,6 +69,70 @@ paths:
           in: query
           schema:
             type: string
+      responses:
+        "302":
+          description: callbackURL にリダイレクト
+
+  /auth/get-session:
+    get:
+      summary: セッション情報取得
+      description: |
+        Better Auth のセッション取得エンドポイント。
+        Bearer トークン（bearer プラグイン）またはセッション Cookie で認証。
+        OpenAPI の AuthMeResponse 形式で返却。
+      operationId: getSession
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: セッション情報
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResponse"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/me:
+    get:
+      summary: 認証ユーザ情報
+      description: セッション情報から AuthMeResponse 形式でユーザ情報を返却するラッパー
+      operationId: getAuthMe
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AuthMeResponse"
+        "401":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /auth/sign-out:
+    post:
+      summary: ログアウト
+      description: Better Auth のログアウトエンドポイント
+      operationId: signOut
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: ログアウト成功
+
+  /auth/token:
+    post:
+      summary: JWT取得
+      description: Better Auth JWT プラグインでセッションから JWT を発行
+      operationId: getToken
+      security:
+        - bearerAuth: []
       responses:
         "200":
           description: JWT発行成功
@@ -44,7 +144,7 @@ paths:
   /auth/service-token:
     post:
       summary: サービスJWT発行
-      description: client_id + client_secret でサービス間認証用JWT発行
+      description: client_id + client_secret でサービス間認証用JWT発行（jose カスタム実装）
       operationId: issueServiceToken
       requestBody:
         required: true
@@ -69,7 +169,7 @@ paths:
   /auth/.well-known/jwks.json:
     get:
       summary: JWKS公開鍵
-      description: ユーザーJWT・サービスJWT共通の公開鍵
+      description: ユーザーJWT・サービスJWT共通の公開鍵（Better Auth の JWKS を転送）
       operationId: getJWKS
       responses:
         "200":
@@ -79,50 +179,18 @@ paths:
               schema:
                 $ref: "#/components/schemas/JWKSResponse"
 
-  /auth/refresh:
-    post:
-      summary: トークンリフレッシュ
-      operationId: refreshToken
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RefreshRequest"
-      responses:
-        "200":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RefreshResponse"
-
-  /auth/me:
+  /auth/jwks:
     get:
-      summary: 認証ユーザ情報
-      operationId: getAuthMe
-      security:
-        - bearerAuth: []
+      summary: JWKS公開鍵（Better Auth デフォルトパス）
+      description: Better Auth JWT プラグインが自動提供する JWKS エンドポイント
+      operationId: getJWKSBetterAuth
       responses:
         "200":
+          description: JWKS
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/AuthMeResponse"
-        "401":
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-
-  /auth/logout:
-    post:
-      summary: ログアウト
-      operationId: logout
-      security:
-        - bearerAuth: []
-      responses:
-        "204":
-          description: ログアウト成功
+                $ref: "#/components/schemas/JWKSResponse"
 
 components:
   securitySchemes:
@@ -156,32 +224,39 @@ components:
 
     TokenResponse:
       type: object
-      required: [access_token, refresh_token, expires_in]
+      required: [token]
       properties:
-        access_token:
+        token:
           type: string
-        refresh_token:
-          type: string
-        expires_in:
-          type: integer
+          description: JWT アクセストークン
 
-    RefreshRequest:
+    SessionResponse:
       type: object
-      required: [refresh_token]
       properties:
-        refresh_token:
-          type: string
-
-    RefreshResponse:
-      type: object
-      required: [access_token, refresh_token, expires_in]
-      properties:
-        access_token:
-          type: string
-        refresh_token:
-          type: string
-        expires_in:
-          type: integer
+        session:
+          type: object
+          properties:
+            id:
+              type: string
+            userId:
+              type: string
+            token:
+              type: string
+            expiresAt:
+              type: string
+              format: date-time
+        user:
+          type: object
+          properties:
+            id:
+              type: string
+            email:
+              type: string
+            name:
+              type: string
+            image:
+              type: string
+              nullable: true
 
     AuthMeResponse:
       type: object
