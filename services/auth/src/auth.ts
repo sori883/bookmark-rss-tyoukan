@@ -1,0 +1,37 @@
+import { betterAuth } from 'better-auth'
+import { drizzleAdapter } from 'better-auth/adapters/drizzle'
+import { jwt, bearer } from 'better-auth/plugins'
+import * as schema from '@bookmark-rss/db'
+import type { AppDb } from './lib/db'
+
+export type AuthInstance = ReturnType<typeof createAuth>
+
+export function createAuth(options: {
+  db: AppDb
+  googleClientId: string
+  googleClientSecret: string
+  secret: string
+  baseURL: string
+  trustedOrigins: string[]
+}) {
+  return betterAuth({
+    database: drizzleAdapter(options.db, {
+      provider: 'pg',
+      schema,
+    }),
+    basePath: '/auth',
+    secret: options.secret,
+    baseURL: options.baseURL,
+    trustedOrigins: options.trustedOrigins,
+    socialProviders: {
+      google: {
+        clientId: options.googleClientId,
+        clientSecret: options.googleClientSecret,
+      },
+    },
+    plugins: [
+      jwt(),
+      bearer(),
+    ],
+  })
+}
