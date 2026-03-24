@@ -1,0 +1,47 @@
+name: feed
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - services/feed/**
+      - packages/db/**
+      - pnpm-lock.yaml
+  pull_request:
+    branches: [main]
+    paths:
+      - services/feed/**
+      - packages/db/**
+      - pnpm-lock.yaml
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck / lint / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+        working-directory: services/feed
+
+      - name: Lint
+        run: pnpm lint
+        working-directory: services/feed
+
+      - name: Test
+        run: pnpm test
+        working-directory: services/feed
