@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash",
+      "mcp__context7__resolve-library-uri",
+      "WebSearch",
+      "WebFetch"
+    ],
+    "deny": [
+      "Bash(rm :*)",
+      "Bash(rm -rf:*)",
+      "Bash(rmdir:*)",
+      "Bash(git clean:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(curl -X POST:*)",
+      "Bash(curl -X PUT:*)",
+      "Bash(curl -X PATCH:*)",
+      "Bash(curl --upload:*)",
+      "Bash(curl -T:*)",
+      "Bash(curl -F:*)",
+      "Bash(curl -d:*)",
+      "Bash(wget --post:*)",
+      "Bash(scp :*)",
+      "Bash(rsync :*)",
+      "Bash(gh release upload:*)",
+      "Bash(gh gist create:*)",
+      "Bash(npm publish:*)",
+      "Bash(pnpm publish:*)",
+      "Bash(docker push:*)",
+      "Bash(cd /:*)"
+    ]
+  },
+  "enabledMcpjsonServers": [
+    "serena",
+    "context7"
+  ]
+}
