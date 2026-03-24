@@ -1,0 +1,46 @@
+name: ai
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - services/ai/**
+  pull_request:
+    branches: [main]
+    paths:
+      - services/ai/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck / lint / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+        working-directory: services/ai
+
+      - name: Lint
+        run: uv run ruff check .
+        working-directory: services/ai
+
+      - name: Typecheck
+        run: uv run pyright .
+        working-directory: services/ai
+
+      - name: Test
+        run: uv run pytest
+        working-directory: services/ai
