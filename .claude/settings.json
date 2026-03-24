@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash",
-      "mcp__context7__resolve-library-uri",
+      "mcp__context7__*",
+      "mcp__serena__*",
       "WebSearch",
       "WebFetch"
     ],
