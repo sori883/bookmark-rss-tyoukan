@@ -1,0 +1,35 @@
+name: CI / bff
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'services/bff/**'
+      - 'packages/db/**'
+  pull_request:
+    branches: [main]
+    paths:
+      - 'services/bff/**'
+      - 'packages/db/**'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: services/bff
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+        working-directory: .
+      - run: pnpm typecheck
+      - run: pnpm test
