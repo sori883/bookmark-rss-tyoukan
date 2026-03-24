@@ -12,10 +12,11 @@ paths:
   /digest:
     post:
       summary: 定期実行トリガー
-      description: feedから記事取得 → 選定・要約 → notification送信
       operationId: runDigest
-      security:
-        - bearerAuth: []
+      description: |
+        feedから記事取得 → 選定・要約 → notification送信。
+        認証はデプロイ先（AgentCore Runtime）の認証機構で制御。
+        ローカル開発時は認証不要。
       requestBody:
         content:
           application/json:
