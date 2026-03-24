@@ -1,6 +1,5 @@
 import {
   pgTable,
-  uuid,
   text,
   boolean,
   timestamp,
@@ -12,17 +11,67 @@ import { sql } from 'drizzle-orm'
 
 // ─── users ────────────────────────────────────────────
 export const users = pgTable('users', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  googleId: text('google_id').notNull().unique(),
+  id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   name: text('name').notNull(),
+  emailVerified: boolean('email_verified').notNull().default(false),
+  image: text('image'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// ─── sessions (Better Auth) ──────────────────────────
+export const sessions = pgTable('sessions', {
+  id: text('id').primaryKey(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  token: text('token').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+})
+
+// ─── accounts (Better Auth) ─────────────────────────
+export const accounts = pgTable('accounts', {
+  id: text('id').primaryKey(),
+  accountId: text('account_id').notNull(),
+  providerId: text('provider_id').notNull(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  accessToken: text('access_token'),
+  refreshToken: text('refresh_token'),
+  idToken: text('id_token'),
+  accessTokenExpiresAt: timestamp('access_token_expires_at', { withTimezone: true }),
+  refreshTokenExpiresAt: timestamp('refresh_token_expires_at', { withTimezone: true }),
+  scope: text('scope'),
+  password: text('password'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
+})
+
+// ─── verifications (Better Auth) ────────────────────
+export const verifications = pgTable('verifications', {
+  id: text('id').primaryKey(),
+  identifier: text('identifier').notNull(),
+  value: text('value').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }),
+  updatedAt: timestamp('updated_at', { withTimezone: true }),
+})
+
+// ─── jwks (Better Auth JWT plugin) ──────────────────
+export const jwks = pgTable('jwks', {
+  id: text('id').primaryKey(),
+  publicKey: text('public_key').notNull(),
+  privateKey: text('private_key').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }),
 })
 
 // ─── feeds ────────────────────────────────────────────
 export const feeds = pgTable('feeds', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   url: text('url').notNull(),
   title: text('title').notNull().default(''),
   siteUrl: text('site_url').notNull().default(''),
@@ -34,9 +83,9 @@ export const feeds = pgTable('feeds', {
 
 // ─── articles ─────────────────────────────────────────
 export const articles = pgTable('articles', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  feedId: uuid('feed_id').notNull().references(() => feeds.id, { onDelete: 'cascade' }),
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  feedId: text('feed_id').notNull().references(() => feeds.id, { onDelete: 'cascade' }),
   url: text('url').notNull(),
   title: text('title').notNull(),
   isRead: boolean('is_read').notNull().default(false),
@@ -51,9 +100,9 @@ export const articles = pgTable('articles', {
 
 // ─── bookmarks ────────────────────────────────────────
 export const bookmarks = pgTable('bookmarks', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  articleId: uuid('article_id').references(() => articles.id, { onDelete: 'set null' }),
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  articleId: text('article_id').references(() => articles.id, { onDelete: 'set null' }),
   url: text('url').notNull(),
   title: text('title').notNull(),
   contentMarkdown: text('content_markdown').notNull().default(''),
@@ -67,8 +116,8 @@ export const bookmarks = pgTable('bookmarks', {
 
 // ─── settings ─────────────────────────────────────────
 export const settings = pgTable('settings', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
   webhookUrl: text('webhook_url'),
   webhookType: text('webhook_type'), // 'slack' | 'discord'
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
@@ -77,7 +126,7 @@ export const settings = pgTable('settings', {
 
 // ─── service_accounts ─────────────────────────────────
 export const serviceAccounts = pgTable('service_accounts', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
   serviceName: text('service_name').notNull(),
   clientId: text('client_id').notNull().unique(),
   clientSecretHash: text('client_secret_hash').notNull(),
@@ -86,8 +135,8 @@ export const serviceAccounts = pgTable('service_accounts', {
 
 // ─── notifications ────────────────────────────────────
 export const notifications = pgTable('notifications', {
-  id: uuid('id').defaultRandom().primaryKey(),
-  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   type: text('type').notNull().default('webhook'),
   message: text('message').notNull(),
   isRead: boolean('is_read').notNull().default(false),
@@ -96,7 +145,7 @@ export const notifications = pgTable('notifications', {
 
 // ─── jobs ─────────────────────────────────────────────
 export const jobs = pgTable('jobs', {
-  id: uuid('id').defaultRandom().primaryKey(),
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
   jobType: text('job_type').notNull(),
   payload: jsonb('payload').default({}),
   status: text('status').notNull().default('pending'), // pending | processing | completed | failed
