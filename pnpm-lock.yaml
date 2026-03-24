@@ -213,12 +213,18 @@ importers:
 
   services/notification:
     dependencies:
+      '@bookmark-rss/db':
+        specifier: workspace:*
+        version: link:../../packages/db
       '@hono/node-server':
         specifier: ^1.13.0
         version: 1.19.11(hono@4.12.9)
+      '@hono/zod-validator':
+        specifier: ^0.5.0
+        version: 0.5.0(hono@4.12.9)(zod@4.3.6)
       drizzle-orm:
-        specifier: ^0.39.0
-        version: 0.39.3(@opentelemetry/api@1.9.0)(kysely@0.28.14)(postgres@3.4.8)
+        specifier: ^0.41.0
+        version: 0.41.0(@opentelemetry/api@1.9.0)(gel@2.2.0)(kysely@0.28.14)(postgres@3.4.8)
       hono:
         specifier: ^4.7.0
         version: 4.12.9
@@ -232,8 +238,8 @@ importers:
         specifier: ^3.4.0
         version: 3.4.8
       zod:
-        specifier: ^3.24.0
-        version: 3.25.76
+        specifier: ^4.0.0
+        version: 4.3.6
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
