@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AuthenticatedRouteImport } from './routes/_authenticated'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedBookmarkAddRouteImport } from './routes/_authenticated/bookmark-add'
 import { Route as AuthenticatedSettingsIndexRouteImport } from './routes/_authenticated/settings/index'
 import { Route as AuthenticatedNotificationsIndexRouteImport } from './routes/_authenticated/notifications/index'
 import { Route as AuthenticatedFeedsIndexRouteImport } from './routes/_authenticated/feeds/index'
@@ -33,6 +34,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedBookmarkAddRoute =
+  AuthenticatedBookmarkAddRouteImport.update({
+    id: '/bookmark-add',
+    path: '/bookmark-add',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedSettingsIndexRoute =
   AuthenticatedSettingsIndexRouteImport.update({
     id: '/settings/',
@@ -72,6 +79,7 @@ const AuthenticatedBookmarksIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/bookmark-add': typeof AuthenticatedBookmarkAddRoute
   '/bookmarks/$id': typeof AuthenticatedBookmarksIdRoute
   '/articles/': typeof AuthenticatedArticlesIndexRoute
   '/bookmarks/': typeof AuthenticatedBookmarksIndexRoute
@@ -82,6 +90,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/login': typeof LoginRoute
+  '/bookmark-add': typeof AuthenticatedBookmarkAddRoute
   '/bookmarks/$id': typeof AuthenticatedBookmarksIdRoute
   '/articles': typeof AuthenticatedArticlesIndexRoute
   '/bookmarks': typeof AuthenticatedBookmarksIndexRoute
@@ -94,6 +103,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteWithChildren
   '/login': typeof LoginRoute
+  '/_authenticated/bookmark-add': typeof AuthenticatedBookmarkAddRoute
   '/_authenticated/bookmarks/$id': typeof AuthenticatedBookmarksIdRoute
   '/_authenticated/articles/': typeof AuthenticatedArticlesIndexRoute
   '/_authenticated/bookmarks/': typeof AuthenticatedBookmarksIndexRoute
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/bookmark-add'
     | '/bookmarks/$id'
     | '/articles/'
     | '/bookmarks/'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/login'
+    | '/bookmark-add'
     | '/bookmarks/$id'
     | '/articles'
     | '/bookmarks'
@@ -127,6 +139,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/login'
+    | '/_authenticated/bookmark-add'
     | '/_authenticated/bookmarks/$id'
     | '/_authenticated/articles/'
     | '/_authenticated/bookmarks/'
@@ -163,6 +176,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/bookmark-add': {
+      id: '/_authenticated/bookmark-add'
+      path: '/bookmark-add'
+      fullPath: '/bookmark-add'
+      preLoaderRoute: typeof AuthenticatedBookmarkAddRouteImport
+      parentRoute: typeof AuthenticatedRoute
     }
     '/_authenticated/settings/': {
       id: '/_authenticated/settings/'
@@ -210,6 +230,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteChildren {
+  AuthenticatedBookmarkAddRoute: typeof AuthenticatedBookmarkAddRoute
   AuthenticatedBookmarksIdRoute: typeof AuthenticatedBookmarksIdRoute
   AuthenticatedArticlesIndexRoute: typeof AuthenticatedArticlesIndexRoute
   AuthenticatedBookmarksIndexRoute: typeof AuthenticatedBookmarksIndexRoute
@@ -219,6 +240,7 @@ interface AuthenticatedRouteChildren {
 }
 
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
+  AuthenticatedBookmarkAddRoute: AuthenticatedBookmarkAddRoute,
   AuthenticatedBookmarksIdRoute: AuthenticatedBookmarksIdRoute,
   AuthenticatedArticlesIndexRoute: AuthenticatedArticlesIndexRoute,
   AuthenticatedBookmarksIndexRoute: AuthenticatedBookmarksIndexRoute,

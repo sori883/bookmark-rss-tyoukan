@@ -9,6 +9,7 @@ import type {
   CreateBookmarkRequest,
   ListArticlesQuery,
   SearchBookmarksQuery,
+  UpdateArticleRequest,
   UpdateSettingsRequest,
   PaginationParams,
   ImportOpmlResponse,
@@ -131,6 +132,14 @@ export const apiClient = {
 
   getArticle(id: string): Promise<ArticleResponse> {
     return request<ArticleResponse>(`/articles/${encodeURIComponent(id)}`)
+  },
+
+  updateArticle(id: string, body: UpdateArticleRequest): Promise<ArticleResponse> {
+    return request<ArticleResponse>(`/articles/${encodeURIComponent(id)}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
   },
 
   getBookmarks(

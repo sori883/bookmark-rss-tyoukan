@@ -22,18 +22,17 @@ test.describe('Articles', () => {
     }
   })
 
-  test('should toggle unread filter via URL', async ({ page }) => {
+  test('should toggle unread filter via button', async ({ page }) => {
     await page.goto('/articles')
     await page.waitForLoadState('networkidle')
 
-    // Click the checkbox label/container to toggle
-    const checkbox = page.getByRole('checkbox')
-    await checkbox.click()
+    // Click the unread filter button
+    const filterButton = page.getByText('未読のみ')
+    await filterButton.click()
     await expect(page).toHaveURL(/is_read=false/)
 
-    // Navigate away and back without filter to verify toggle works
-    await page.goto('/articles?page=1')
-    await page.waitForLoadState('networkidle')
-    await expect(checkbox).not.toBeChecked()
+    // Click again to deactivate filter
+    await filterButton.click()
+    await expect(page).not.toHaveURL(/is_read=false/)
   })
 })

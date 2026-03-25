@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Trash2 } from 'lucide-react'
 import { useFeeds, useDeleteFeed } from '~/hooks/use-feeds'
 import { Button } from '~/components/ui/button'
 import { Modal } from '~/components/ui/modal'
@@ -41,13 +42,14 @@ export function FeedList() {
                 </p>
               )}
             </div>
-            <Button
-              variant="danger"
-              size="sm"
+            <button
+              type="button"
               onClick={() => setDeleteTarget(feed.id)}
+              className="shrink-0 rounded-lg p-1.5 text-text-muted transition hover:bg-danger/10 hover:text-danger"
+              aria-label="フィードを削除"
             >
-              削除
-            </Button>
+              <Trash2 size={16} />
+            </button>
           </div>
         ))}
       </div>

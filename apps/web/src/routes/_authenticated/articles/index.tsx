@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
 import { useFeeds } from '~/hooks/use-feeds'
 import { ArticleList } from '~/components/articles/article-list'
@@ -32,11 +33,13 @@ function ArticlesPage() {
     })
   }
 
+  const isUnreadOnly = search.is_read === false
+
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-bold">記事一覧</h1>
 
-      <div className="flex flex-wrap gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <div className="w-48">
           <Select
             options={feedOptions}
@@ -47,17 +50,20 @@ function ArticlesPage() {
             }
           />
         </div>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={search.is_read === false}
-            onChange={(e) =>
-              updateSearch({ is_read: e.target.checked ? false : undefined })
-            }
-            className="rounded"
-          />
+        <button
+          type="button"
+          onClick={() =>
+            updateSearch({ is_read: isUnreadOnly ? undefined : false })
+          }
+          className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition ${
+            isUnreadOnly
+              ? 'bg-primary/20 text-primary'
+              : 'bg-bg-card text-text-muted hover:bg-bg-hover'
+          }`}
+        >
+          {isUnreadOnly ? <EyeOff size={16} /> : <Eye size={16} />}
           未読のみ
-        </label>
+        </button>
       </div>
 
       <ArticleList

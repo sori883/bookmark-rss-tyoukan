@@ -25,7 +25,7 @@ test.describe('Feeds Management', () => {
     )).toBeVisible({ timeout: 30000 })
 
     // Delete the feed
-    const deleteButton = page.getByRole('button', { name: '削除' }).first()
+    const deleteButton = page.getByRole('button', { name: /削除/ }).first()
     await deleteButton.click()
 
     // Confirm deletion in modal

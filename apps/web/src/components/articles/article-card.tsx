@@ -1,5 +1,7 @@
+import { BookmarkPlus } from 'lucide-react'
 import type { ArticleResponse } from '~/types/api'
 import { useCreateBookmark } from '~/hooks/use-bookmarks'
+import { useMarkArticleRead } from '~/hooks/use-articles'
 import { Button } from '~/components/ui/button'
 
 type ArticleCardProps = {
@@ -9,10 +11,17 @@ type ArticleCardProps = {
 
 export function ArticleCard({ article, feedTitle }: ArticleCardProps) {
   const createBookmark = useCreateBookmark()
+  const markRead = useMarkArticleRead()
 
   const handleBookmark = (e: React.MouseEvent) => {
     e.stopPropagation()
     createBookmark.mutate({ article_id: article.id })
+  }
+
+  const handleLinkClick = () => {
+    if (!article.is_read) {
+      markRead.mutate(article.id)
+    }
   }
 
   return (
@@ -28,6 +37,7 @@ export function ArticleCard({ article, feedTitle }: ArticleCardProps) {
             target="_blank"
             rel="noopener noreferrer"
             className="font-medium hover:text-primary"
+            onClick={handleLinkClick}
           >
             {article.title}
           </a>
@@ -47,8 +57,9 @@ export function ArticleCard({ article, feedTitle }: ArticleCardProps) {
           onClick={handleBookmark}
           loading={createBookmark.isPending}
           aria-label="ブックマークに追加"
+          title="ブックマークに追加"
         >
-          🔖
+          <BookmarkPlus size={18} />
         </Button>
       </div>
     </div>

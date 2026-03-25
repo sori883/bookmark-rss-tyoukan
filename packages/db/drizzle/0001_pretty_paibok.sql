@@ -1,0 +1,1 @@
+ALTER TABLE "settings" ADD COLUMN "notification_hour" integer DEFAULT 9 NOT NULL;

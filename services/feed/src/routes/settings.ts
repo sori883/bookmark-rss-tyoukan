@@ -24,6 +24,7 @@ app.get('/notification-targets', async (c) => {
       userId: settings.userId,
       webhookUrl: settings.webhookUrl,
       webhookType: settings.webhookType,
+      notificationHour: settings.notificationHour,
     })
     .from(settings)
     .where(isNotNull(settings.webhookUrl))
@@ -35,6 +36,7 @@ app.get('/notification-targets', async (c) => {
         user_id: r.userId,
         webhook_url: r.webhookUrl,
         webhook_type: r.webhookType,
+        notification_hour: r.notificationHour,
       })),
   })
 })
@@ -47,6 +49,7 @@ app.get('/', async (c) => {
     .select({
       webhookUrl: settings.webhookUrl,
       webhookType: settings.webhookType,
+      notificationHour: settings.notificationHour,
     })
     .from(settings)
     .where(eq(settings.userId, userId))
@@ -55,8 +58,9 @@ app.get('/', async (c) => {
   const row = rows[0]
 
   return c.json({
-    webhook_url: row?.webhookUrl ?? null,
+    webhook_url_registered: Boolean(row?.webhookUrl),
     webhook_type: row?.webhookType ?? null,
+    notification_hour: row?.notificationHour ?? 9,
   })
 })
 
@@ -66,8 +70,12 @@ app.put(
   zValidator(
     'json',
     z.object({
-      webhook_url: z.string().url().optional(),
+      webhook_url: z.string().url().refine(
+        (url) => url.startsWith('https://'),
+        { message: 'Webhook URL must use HTTPS' },
+      ).optional(),
       webhook_type: z.enum(['slack', 'discord']).optional(),
+      notification_hour: z.number().int().min(0).max(23).optional(),
     }),
   ),
   async (c) => {
@@ -84,8 +92,9 @@ app.put(
       await db
         .update(settings)
         .set({
-          webhookUrl: body.webhook_url,
-          webhookType: body.webhook_type,
+          ...(body.webhook_url !== undefined ? { webhookUrl: body.webhook_url } : {}),
+          ...(body.webhook_type !== undefined ? { webhookType: body.webhook_type } : {}),
+          ...(body.notification_hour !== undefined ? { notificationHour: body.notification_hour } : {}),
           updatedAt: new Date(),
         })
         .where(eq(settings.userId, userId))
@@ -94,6 +103,7 @@ app.put(
         userId,
         webhookUrl: body.webhook_url ?? null,
         webhookType: body.webhook_type ?? null,
+        notificationHour: body.notification_hour ?? 9,
       })
     }
 
@@ -101,14 +111,16 @@ app.put(
       .select({
         webhookUrl: settings.webhookUrl,
         webhookType: settings.webhookType,
+        notificationHour: settings.notificationHour,
       })
       .from(settings)
       .where(eq(settings.userId, userId))
       .limit(1)
 
     return c.json({
-      webhook_url: updated[0]?.webhookUrl ?? null,
+      webhook_url_registered: Boolean(updated[0]?.webhookUrl),
       webhook_type: updated[0]?.webhookType ?? null,
+      notification_hour: updated[0]?.notificationHour ?? 9,
     })
   },
 )

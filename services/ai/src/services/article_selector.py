@@ -1,3 +1,5 @@
+from datetime import UTC, datetime
+
 import structlog
 from pydantic import BaseModel
 from strands import Agent
@@ -16,7 +18,7 @@ SELECTION_SYSTEM_PROMPT = """あなたは技術記事キュレーターです。
 - 開発者コミュニティで話題になりそうな内容
 - 実用的で学びのある技術記事
 
-最大10件を選定してください。記事が5件以下の場合は全件選定してください。"""
+最大5件を選定してください。記事が5件以下の場合は全件選定してください。"""
 
 MIN_ARTICLES_FOR_SELECTION = 5
 
@@ -87,7 +89,11 @@ def _parse_selection_result(
 
 
 def _fallback_selection(articles: list[ArticleResponse]) -> list[ArticleResponse]:
-    """選定失敗時のフォールバック: 最新10件を返す。"""
+    """選定失敗時のフォールバック: 最新5件を返す。"""
     logger.info("using_fallback_selection")
-    sorted_articles = sorted(articles, key=lambda a: a.published_at, reverse=True)
-    return sorted_articles[:10]
+    sorted_articles = sorted(
+        articles,
+        key=lambda a: a.published_at or datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )
+    return sorted_articles[:5]

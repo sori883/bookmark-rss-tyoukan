@@ -12,9 +12,10 @@ class Settings(BaseSettings):
     aws_region: str = "us-east-1"
     bedrock_model_id: str = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
+    web_origin: str = "http://localhost:5173"
     log_level: str = "info"
     max_articles_per_request: int = 100
-    max_digest_articles: int = 10
+    max_digest_articles: int = 5
     jwt_cache_margin_seconds: int = 300
     require_auth: bool = False
 

@@ -12,7 +12,7 @@ export interface SchedulersProps {
 /**
  * EventBridge Scheduler を作成する
  * - feed:fetch: 30分ごとに feed Lambda の /feeds/fetch を POST
- * - ai:digest: 毎朝 JST 9:00 (UTC 0:00) に ai エンドポイントへ POST /digest
+ * - ai:digest: 毎時0分に ai エンドポイントへ POST /digest（ユーザーの通知時間設定に基づきJSTでフィルタ）
  */
 export function createSchedulers(
   scope: Construct,
@@ -78,9 +78,9 @@ function createAiDigestScheduler(
 
   new scheduler.CfnSchedule(scope, 'AiDigestSchedule', {
     name: `bookmark-rss-ai-digest-${stage}`,
-    // UTC 0:00 = JST 9:00
-    scheduleExpression: 'cron(0 0 * * ? *)',
-    scheduleExpressionTimezone: 'UTC',
+    // 毎時0分に実行、AIサービス側でユーザーの notification_hour (JST) と比較
+    scheduleExpression: 'cron(0 * * * ? *)',
+    scheduleExpressionTimezone: 'Asia/Tokyo',
     flexibleTimeWindow: { mode: 'OFF' },
     target: {
       arn: aiEndpointArn,

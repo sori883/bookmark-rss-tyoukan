@@ -1,6 +1,5 @@
 import { resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { generateKeyPair, exportJWK } from 'jose'
 import { config } from 'dotenv'
 import postgres from 'postgres'
 import { drizzle } from 'drizzle-orm/postgres-js'
@@ -10,7 +9,6 @@ import {
   users,
   serviceAccounts,
   settings,
-  jwks,
 } from '../packages/db/src/schema'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
@@ -149,33 +147,7 @@ async function seedSettings(
   console.info('[seed] settings: inserted test-user-1 settings')
 }
 
-async function seedJwks(
-  db: ReturnType<typeof drizzle>,
-): Promise<void> {
-  const existing = await db
-    .select()
-    .from(jwks)
-    .then((rows) => rows[0])
-
-  if (existing) {
-    console.info('[seed] jwks: key pair already exists, skipping')
-    return
-  }
-
-  const { publicKey, privateKey } = await generateKeyPair('RS256', { extractable: true })
-  const publicJwk = await exportJWK(publicKey)
-  const privateJwk = await exportJWK(privateKey)
-
-  const keyId = `test-key-${crypto.randomUUID()}`
-
-  await db.insert(jwks).values({
-    id: keyId,
-    publicKey: JSON.stringify({ ...publicJwk, alg: 'RS256' }),
-    privateKey: JSON.stringify({ ...privateJwk, alg: 'RS256' }),
-  })
-
-  console.info(`[seed] jwks: inserted RSA key pair (kid: ${keyId})`)
-}
+// JWKS鍵はBetter Authが初回リクエスト時に自動生成するため、seedでは作成しない
 
 async function main(): Promise<void> {
   const seedConfig = loadSeedConfig()
@@ -185,7 +157,7 @@ async function main(): Promise<void> {
   const db = drizzle(sql)
 
   try {
-    await seedJwks(db)
+    // JWKS鍵はBetter Authが初回リクエスト時に自動生成する
     await seedUser(db)
     await seedServiceAccount(db, seedConfig)
     await seedSettings(db, seedConfig)

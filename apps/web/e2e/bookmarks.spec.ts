@@ -33,7 +33,7 @@ test.describe('Bookmarks', () => {
 
     const isEmpty = await page.getByText('ブックマークがありません').isVisible().catch(() => false)
     if (!isEmpty) {
-      await expect(page.getByRole('button', { name: '削除' }).first()).toBeVisible()
+      await expect(page.getByRole('button', { name: /削除/ }).first()).toBeVisible()
     }
   })
 
@@ -46,15 +46,29 @@ test.describe('Bookmarks', () => {
     await expect(page.getByPlaceholder('キーワードで検索...')).toBeVisible()
   })
 
-  test('should search bookmarks', async ({ page }) => {
+  test('should search bookmarks without errors', async ({ page }) => {
+    // API エラーを検出するためレスポンスを監視
+    const apiErrors: string[] = []
+    page.on('response', (response) => {
+      if (response.url().includes('/bookmarks/search') && response.status() >= 400) {
+        apiErrors.push(`${response.status()} ${response.url()}`)
+      }
+    })
+
     await page.goto('/bookmarks?tab=search')
     await page.waitForLoadState('networkidle')
 
     await page.getByPlaceholder('キーワードで検索...').fill('test')
-    await page.waitForTimeout(1000)
+    await page.waitForTimeout(2000)
 
+    // API がエラーを返していないことを確認
+    expect(apiErrors).toHaveLength(0)
+
+    // 検索結果またはエラーメッセージではない「該当なし」メッセージが表示されること
     const noResults = await page.getByText('該当するブックマークがありません').isVisible().catch(() => false)
     const hasResults = await page.getByText('件の結果').isVisible().catch(() => false)
+    const hasError = await page.getByText('失敗').isVisible().catch(() => false)
+    expect(hasError).toBeFalsy()
     expect(noResults || hasResults).toBeTruthy()
   })
 
@@ -78,12 +92,12 @@ test.describe('Bookmarks', () => {
     await page.waitForLoadState('networkidle')
 
     // E2E test bookmark is seeded by global-setup
-    await expect(page.getByRole('button', { name: '削除' }).first()).toBeVisible({ timeout: 10000 })
+    await expect(page.getByRole('button', { name: /削除/ }).first()).toBeVisible({ timeout: 10000 })
 
-    const countBefore = await page.getByRole('button', { name: '削除' }).count()
-    await page.getByRole('button', { name: '削除' }).first().click()
+    const countBefore = await page.getByRole('button', { name: /削除/ }).count()
+    await page.getByRole('button', { name: /削除/ }).first().click()
     await page.waitForTimeout(2000)
-    const countAfter = await page.getByRole('button', { name: '削除' }).count()
+    const countAfter = await page.getByRole('button', { name: /削除/ }).count()
     expect(countAfter).toBeLessThan(countBefore)
   })
 })

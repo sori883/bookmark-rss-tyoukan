@@ -38,6 +38,14 @@ export function errorResponse(c: Context, error: unknown): Response {
     )
   }
 
+  // PostgreSQL の重複キーエラー
+  if (error instanceof Error && 'code' in error && (error as { code: string }).code === '23505') {
+    return c.json(
+      { error: { code: 'DUPLICATE', message: 'このリソースは既に登録されています' } },
+      409,
+    )
+  }
+
   return c.json(
     { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } },
     500,

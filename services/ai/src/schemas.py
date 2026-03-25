@@ -5,6 +5,7 @@ from pydantic import BaseModel
 
 class DigestRequest(BaseModel):
     since: datetime | None = None
+    skip_hour_filter: bool = False
 
 
 class DigestArticle(BaseModel):
@@ -26,7 +27,7 @@ class ArticleResponse(BaseModel):
     url: str
     title: str
     is_read: bool
-    published_at: datetime
+    published_at: datetime | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -67,6 +68,7 @@ class NotificationTarget(BaseModel):
     user_id: str
     webhook_url: str
     webhook_type: str | None = None
+    notification_hour: int = 9
 
 
 class NotificationTargetsResponse(BaseModel):

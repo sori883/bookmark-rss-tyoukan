@@ -23,6 +23,7 @@ export function useCreateFeed() {
     mutationFn: (body: CreateFeedRequest) => apiClient.createFeed(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
+      queryClient.invalidateQueries({ queryKey: ['articles'] })
     },
   })
 }
@@ -48,6 +49,7 @@ export function useDeleteFeed() {
     },
     onSettled: () => {
       queryClient.invalidateQueries({ queryKey: ['feeds'] })
+      queryClient.invalidateQueries({ queryKey: ['articles'] })
     },
   })
 }

@@ -7,6 +7,7 @@ import type { AuthVariables } from '../middleware/auth.js'
 import * as feedService from '../services/feed-service.js'
 import * as rssFetcher from '../services/rss-fetcher.js'
 import { parseOpml } from '../lib/opml-parser.js'
+import { discoverFeedUrl } from '../lib/rss-discovery.js'
 import { ValidationError } from '../lib/errors.js'
 import { logger } from '../lib/logger.js'
 
@@ -24,9 +25,16 @@ app.post(
     }),
   ),
   async (c) => {
-    const { url } = c.req.valid('json')
+    const { url: inputUrl } = c.req.valid('json')
     const userId = getUserId(c.get('jwtPayload'))
 
+    // RSS自動検出: 入力URLがRSSフィードでない場合、フィードURLを検出する
+    const feedUrl = await discoverFeedUrl(inputUrl)
+    if (!feedUrl) {
+      throw new ValidationError('RSSフィードが見つかりませんでした。RSSフィードのURLを直接指定してください。')
+    }
+
+    const url = feedUrl
     const feed = await feedService.createFeed(db, { userId, url })
 
     // 初回フェッチを実行（失敗しても登録自体は成功扱い）
@@ -120,9 +128,23 @@ app.post('/import-opml', async (c) => {
 
   const imported = await feedService.importOpml(db, userId, opmlFeeds)
 
+  // インポートしたフィードの初回フェッチを実行（失敗しても成功扱い）
+  for (const feed of imported) {
+    try {
+      await rssFetcher.fetchFeeds(db, feed.id, userId)
+    } catch (err) {
+      logger.warn({ feedId: feed.id, err }, 'Initial fetch after OPML import failed')
+    }
+  }
+
+  // フェッチ後の最新状態を取得
+  const updatedFeeds = imported.length > 0
+    ? await feedService.getFeedsByIds(db, imported.map((f) => f.id))
+    : []
+
   return c.json({
     imported_count: imported.length,
-    feeds: imported.map((f) => ({
+    feeds: updatedFeeds.map((f) => ({
       id: f.id,
       user_id: f.userId,
       url: f.url,

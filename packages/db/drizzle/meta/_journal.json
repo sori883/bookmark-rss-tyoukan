@@ -8,6 +8,13 @@
       "when": 1774412645076,
       "tag": "0000_flaky_puma",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1774448864238,
+      "tag": "0001_pretty_paibok",
+      "breakpoints": true
     }
   ]
 }

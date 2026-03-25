@@ -4,6 +4,7 @@ import {
   boolean,
   timestamp,
   jsonb,
+  integer,
   index,
   uniqueIndex,
 } from 'drizzle-orm/pg-core'
@@ -120,6 +121,7 @@ export const settings = pgTable('settings', {
   userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
   webhookUrl: text('webhook_url'),
   webhookType: text('webhook_type'), // 'slack' | 'discord'
+  notificationHour: integer('notification_hour').notNull().default(9), // 0-23
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 })

@@ -113,7 +113,7 @@ export async function deleteBookmark(db: AppDb, id: string, userId: string) {
 export async function searchBookmarks(db: AppDb, query: SearchBookmarksQuery) {
   const where = and(
     eq(bookmarks.userId, query.userId),
-    sql`search_vector @@ plainto_tsquery('english', ${query.q})`,
+    sql`search_vector @@ plainto_tsquery('simple', ${query.q})`,
   )
 
   const [data, [{ total }]] = await Promise.all([

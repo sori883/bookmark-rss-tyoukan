@@ -1,9 +1,11 @@
+import { CheckCircle, Circle } from 'lucide-react'
 import type { PaginationParams } from '~/types/api'
 import { useNotifications, useMarkNotificationRead } from '~/hooks/use-notifications'
 import { Pagination } from '~/components/ui/pagination'
 import { Loading } from '~/components/ui/loading'
 import { ErrorMessage } from '~/components/ui/error-message'
 import { EmptyState } from '~/components/ui/empty-state'
+import { MarkdownViewer } from '~/components/bookmarks/markdown-viewer'
 import { DEFAULT_PAGE_SIZE } from '~/lib/constants'
 
 type NotificationListProps = {
@@ -33,24 +35,30 @@ export function NotificationList({ params, onPageChange }: NotificationListProps
               !notification.is_read ? 'border-l-4 border-primary' : ''
             }`}
           >
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 pt-1">
+                {notification.is_read ? (
+                  <CheckCircle size={20} className="text-text-muted" />
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => markRead.mutate(notification.id)}
+                    className="text-primary transition hover:text-primary/70"
+                    aria-label="既読にする"
+                    title="既読にする"
+                  >
+                    <Circle size={20} />
+                  </button>
+                )}
+              </div>
               <div className="min-w-0 flex-1">
-                <pre className="whitespace-pre-wrap text-sm leading-relaxed font-sans">
-                  {notification.message}
-                </pre>
+                <div className="text-sm leading-relaxed">
+                  <MarkdownViewer content={notification.message} />
+                </div>
                 <p className="mt-2 text-xs text-text-muted">
                   {new Date(notification.sent_at).toLocaleString('ja-JP')}
                 </p>
               </div>
-              {!notification.is_read && (
-                <button
-                  type="button"
-                  onClick={() => markRead.mutate(notification.id)}
-                  className="shrink-0 rounded-lg px-2 py-1 text-xs text-text-muted transition hover:bg-bg-hover"
-                >
-                  既読にする
-                </button>
-              )}
             </div>
           </div>
         ))}

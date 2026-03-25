@@ -48,6 +48,10 @@ export type ListArticlesQuery = PaginationParams & {
   readonly is_read?: boolean
 }
 
+export type UpdateArticleRequest = {
+  readonly is_read?: boolean
+}
+
 export type BookmarkResponse = {
   readonly id: string
   readonly user_id: string
@@ -78,13 +82,15 @@ export type NotificationResponse = {
 }
 
 export type SettingsResponse = {
-  readonly webhook_url: string | null
+  readonly webhook_url_registered: boolean
   readonly webhook_type: 'slack' | 'discord' | null
+  readonly notification_hour: number
 }
 
 export type UpdateSettingsRequest = {
   readonly webhook_url?: string
   readonly webhook_type?: 'slack' | 'discord'
+  readonly notification_hour?: number
 }
 
 export type AuthUser = {
