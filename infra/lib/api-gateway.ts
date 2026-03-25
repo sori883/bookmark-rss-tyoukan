@@ -35,26 +35,32 @@ export function createApiGateway(
     'AuthIntegration',
     lambdas.auth,
   )
-  const bffIntegration = new HttpLambdaIntegration(
-    'BffIntegration',
-    lambdas.bff,
+  const feedIntegration = new HttpLambdaIntegration(
+    'FeedIntegration',
+    lambdas.feed,
+  )
+  const notificationIntegration = new HttpLambdaIntegration(
+    'NotificationIntegration',
+    lambdas.notification,
   )
 
   // Auth routes
   addRoute(httpApi, '/auth/{proxy+}', authIntegration)
 
-  // BFF routes
-  addRouteWithCollection(httpApi, '/feeds', bffIntegration)
-  addRouteWithCollection(httpApi, '/articles', bffIntegration)
-  addRouteWithCollection(httpApi, '/bookmarks', bffIntegration)
-  addRouteWithCollection(httpApi, '/notifications', bffIntegration)
-  addRoute(httpApi, '/settings', bffIntegration)
+  // Feed routes (feeds, articles, bookmarks, settings)
+  addRouteWithCollection(httpApi, '/feeds', feedIntegration)
+  addRouteWithCollection(httpApi, '/articles', feedIntegration)
+  addRouteWithCollection(httpApi, '/bookmarks', feedIntegration)
+  addRoute(httpApi, '/settings', feedIntegration)
+
+  // Notification routes
+  addRouteWithCollection(httpApi, '/notifications', notificationIntegration)
 
   // Health check
   httpApi.addRoutes({
     path: '/health',
     methods: [apigwv2.HttpMethod.GET],
-    integration: bffIntegration,
+    integration: feedIntegration,
   })
 
   return { httpApi }

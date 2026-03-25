@@ -12,12 +12,10 @@ export interface LambdaFunctionsProps {
 
 export interface LambdaFunctionsResult {
   readonly auth: NodejsFunction
-  readonly bff: NodejsFunction
   readonly feed: NodejsFunction
   readonly notification: NodejsFunction
   readonly urls: {
     readonly auth: string
-    readonly bff: string
     readonly feed: string
     readonly notification: string
   }
@@ -51,7 +49,7 @@ function baseNodejsProps(
 }
 
 /**
- * 4 つの TypeScript Lambda 関数を作成する
+ * 3 つの TypeScript Lambda 関数を作成する
  * 環境変数のサービス間 URL は後から addEnvironment() で追加する（循環参照回避）
  */
 export function createLambdaFunctions(
@@ -62,22 +60,15 @@ export function createLambdaFunctions(
 
   const auth = createAuthFunction(scope, stage, ssm)
   const feed = createFeedFunction(scope, stage, ssm)
-  const bff = createBffFunction(scope, stage, ssm)
   const notification = createNotificationFunction(scope, stage, ssm)
 
   // Function URL を有効化（IAM 認証なし）
   const authUrl = auth.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE })
   const feedUrl = feed.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE })
-  const bffUrl = bff.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE })
   const notifUrl = notification.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE })
 
   // サービス間 URL を環境変数に追加
   addServiceUrls(auth, { AUTH_SERVICE_URL: authUrl.url })
-  addServiceUrls(bff, {
-    AUTH_JWKS_URL: cdk.Fn.join('', [authUrl.url, 'auth/.well-known/jwks.json']),
-    FEED_SERVICE_URL: feedUrl.url,
-    NOTIFICATION_SERVICE_URL: notifUrl.url,
-  })
   addServiceUrls(feed, {
     AUTH_JWKS_URL: cdk.Fn.join('', [authUrl.url, 'auth/.well-known/jwks.json']),
   })
@@ -87,12 +78,10 @@ export function createLambdaFunctions(
 
   return {
     auth,
-    bff,
     feed,
     notification,
     urls: {
       auth: authUrl.url,
-      bff: bffUrl.url,
       feed: feedUrl.url,
       notification: notifUrl.url,
     },
@@ -123,20 +112,6 @@ function createFeedFunction(
 ): NodejsFunction {
   return new NodejsFunction(scope, 'FeedFunction', {
     ...baseNodejsProps('feed', stage, 512),
-    environment: {
-      NODE_OPTIONS: '--enable-source-maps',
-      DATABASE_URL: ssm.values['database-url'],
-    },
-  })
-}
-
-function createBffFunction(
-  scope: Construct,
-  stage: string,
-  ssm: SsmParams,
-): NodejsFunction {
-  return new NodejsFunction(scope, 'BffFunction', {
-    ...baseNodejsProps('bff', stage, 256),
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
       DATABASE_URL: ssm.values['database-url'],

@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Feed Service API
   version: 0.0.1
-  description: フィードCRUD, RSS記事管理, ブックマーク管理（内部API）
+  description: フィードCRUD, RSS記事管理, ブックマーク管理, ユーザ設定管理（公開API）
 
 servers:
   - url: http://localhost:3001
@@ -259,6 +259,37 @@ paths:
         "204":
           description: 削除成功
 
+  # ─── 設定 ─────────────────────────────────────────
+  /settings:
+    get:
+      summary: ユーザ設定取得
+      operationId: getSettings
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+    put:
+      summary: ユーザ設定更新
+      operationId: updateSettings
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSettingsRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SettingsResponse"
+
 components:
   securitySchemes:
     bearerAuth:
@@ -465,6 +496,26 @@ components:
           type: integer
         limit:
           type: integer
+
+    SettingsResponse:
+      type: object
+      properties:
+        webhook_url:
+          type: string
+          nullable: true
+        webhook_type:
+          type: string
+          enum: [slack, discord]
+          nullable: true
+
+    UpdateSettingsRequest:
+      type: object
+      properties:
+        webhook_url:
+          type: string
+        webhook_type:
+          type: string
+          enum: [slack, discord]
 
     ErrorResponse:
       type: object

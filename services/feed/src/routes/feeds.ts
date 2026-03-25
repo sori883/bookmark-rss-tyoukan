@@ -8,6 +8,7 @@ import * as feedService from '../services/feed-service.js'
 import * as rssFetcher from '../services/rss-fetcher.js'
 import { parseOpml } from '../lib/opml-parser.js'
 import { ValidationError } from '../lib/errors.js'
+import { logger } from '../lib/logger.js'
 
 const app = new Hono<{ Variables: AuthVariables }>()
 
@@ -28,15 +29,26 @@ app.post(
 
     const feed = await feedService.createFeed(db, { userId, url })
 
+    // 初回フェッチを実行（失敗しても登録自体は成功扱い）
+    try {
+      await rssFetcher.fetchFeeds(db, feed.id, userId)
+    } catch (err) {
+      // 初回フェッチ失敗はログに記録するのみ
+      logger.warn({ feedId: feed.id, err }, 'Initial feed fetch failed')
+    }
+
+    // フェッチ後の最新状態を取得
+    const result = await feedService.getFeedById(db, feed.id, userId)
+
     return c.json(
       {
-        id: feed.id,
-        user_id: feed.userId,
-        url: feed.url,
-        title: feed.title,
-        site_url: feed.siteUrl,
-        last_fetched_at: feed.lastFetchedAt?.toISOString() ?? null,
-        created_at: feed.createdAt.toISOString(),
+        id: result.id,
+        user_id: result.userId,
+        url: result.url,
+        title: result.title,
+        site_url: result.siteUrl,
+        last_fetched_at: result.lastFetchedAt?.toISOString() ?? null,
+        created_at: result.createdAt.toISOString(),
       },
       201,
     )

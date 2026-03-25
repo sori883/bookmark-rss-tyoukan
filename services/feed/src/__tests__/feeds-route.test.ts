@@ -2,6 +2,9 @@ import { vi } from 'vitest'
 
 // モジュールモック
 vi.mock('../lib/db.js', () => ({ db: {} }))
+vi.mock('../lib/logger.js', () => ({
+  logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 vi.mock('../middleware/auth.js', () => {
   const { createMiddleware } = require('hono/factory')
   return {
@@ -17,11 +20,13 @@ const mockCreateFeed = vi.fn()
 const mockListFeeds = vi.fn()
 const mockDeleteFeed = vi.fn()
 const mockImportOpml = vi.fn()
+const mockGetFeedById = vi.fn()
 vi.mock('../services/feed-service.js', () => ({
   createFeed: (...args: unknown[]) => mockCreateFeed(...args),
   listFeeds: (...args: unknown[]) => mockListFeeds(...args),
   deleteFeed: (...args: unknown[]) => mockDeleteFeed(...args),
   importOpml: (...args: unknown[]) => mockImportOpml(...args),
+  getFeedById: (...args: unknown[]) => mockGetFeedById(...args),
 }))
 
 const mockFetchFeeds = vi.fn()
@@ -50,8 +55,8 @@ const NOW = new Date('2025-01-01T00:00:00Z')
 describe('POST /feeds', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('should create feed and return 201', async () => {
-    mockCreateFeed.mockResolvedValue({
+  it('should create feed, run initial fetch, and return 201', async () => {
+    const feedData = {
       id: 'feed-1',
       userId: 'user-1',
       url: 'https://example.com/rss',
@@ -59,7 +64,10 @@ describe('POST /feeds', () => {
       siteUrl: 'https://example.com',
       lastFetchedAt: null,
       createdAt: NOW,
-    })
+    }
+    mockCreateFeed.mockResolvedValue(feedData)
+    mockFetchFeeds.mockResolvedValue({ fetchedCount: 1, newArticlesCount: 3 })
+    mockGetFeedById.mockResolvedValue(feedData)
 
     const app = createApp()
     const res = await app.request('/feeds', {
@@ -74,6 +82,11 @@ describe('POST /feeds', () => {
     expect(body.user_id).toBe('user-1')
     expect(body.url).toBe('https://example.com/rss')
     expect(body.last_fetched_at).toBeNull()
+    expect(mockFetchFeeds).toHaveBeenCalledWith(
+      expect.anything(),
+      'feed-1',
+      'user-1',
+    )
   })
 
   it('should return 400 for invalid URL', async () => {

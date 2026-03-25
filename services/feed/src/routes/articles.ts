@@ -98,12 +98,20 @@ app.get(
   },
 )
 
-// GET /articles/:id — 記事詳細
+// GET /articles/:id — 記事詳細（未読の場合は自動既読更新）
 app.get('/:id', async (c) => {
   const id = c.req.param('id')
   const userId = getUserId(c.get('jwtPayload'))
 
   const article = await articleService.getArticle(db, id, userId)
+
+  // 未読の場合は自動的に既読に更新
+  if (!article.isRead) {
+    const updated = await articleService.updateArticle(db, id, userId, {
+      isRead: true,
+    })
+    return c.json(toResponse(updated))
+  }
 
   return c.json(toResponse(article))
 })

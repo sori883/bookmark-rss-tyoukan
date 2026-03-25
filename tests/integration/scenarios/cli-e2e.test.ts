@@ -47,7 +47,7 @@ describe.skipIf(skipCli)('cli-e2e: CLI バイナリ結合テスト', () => {
 
   beforeAll(async () => {
     env = loadTestEnv()
-    await waitForService(env.BFF_BASE_URL, { serviceName: 'bff' })
+    await waitForService(env.FEED_BASE_URL, { serviceName: 'feed' })
 
     // Build the CLI binary
     const cliDir = resolve(__dirname, '..', '..', '..', 'apps', 'cli')
@@ -75,20 +75,20 @@ describe.skipIf(skipCli)('cli-e2e: CLI バイナリ結合テスト', () => {
     await writeFile(join(configDir, 'token.json'), tokenData, 'utf-8')
 
     cliEnv = {
-      BOOKMARK_RSS_BFF_URL: env.BFF_BASE_URL,
+      BOOKMARK_RSS_API_URL: env.FEED_BASE_URL,
       HOME: tempHomeDir,
     }
   }, CLI_BUILD_TIMEOUT + 30_000)
 
   afterAll(async () => {
     // Clean up created feeds via HTTP API (CLI uses short IDs, need full IDs)
-    const bffClient = createAuthClient(env.BFF_BASE_URL, token)
-    const feedsRes = await bffClient.get<Array<{ id: string; url: string }>>('/feeds')
+    const feedClient = createAuthClient(env.FEED_BASE_URL, token)
+    const feedsRes = await feedClient.get<Array<{ id: string; url: string }>>('/feeds')
     if (feedsRes.ok) {
       for (const feed of feedsRes.data) {
         if (feed.url.includes('t=cli-')) {
           try {
-            await bffClient.delete(`/feeds/${feed.id}`)
+            await feedClient.delete(`/feeds/${feed.id}`)
           } catch {
             // クリーンアップ失敗は無視
           }

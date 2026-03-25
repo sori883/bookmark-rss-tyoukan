@@ -14,12 +14,12 @@ use crate::error::ApiError;
 
 pub struct ApiClient {
     client: Client,
-    bff_url: String,
+    api_url: String,
     token: String,
 }
 
 impl ApiClient {
-    pub fn new(bff_url: &str, token: &str) -> Result<Self> {
+    pub fn new(api_url: &str, token: &str) -> Result<Self> {
         let client = Client::builder()
             .timeout(Duration::from_secs(30))
             .build()
@@ -27,7 +27,7 @@ impl ApiClient {
 
         Ok(Self {
             client,
-            bff_url: bff_url.to_string(),
+            api_url: api_url.to_string(),
             token: token.to_string(),
         })
     }
@@ -53,7 +53,7 @@ impl ApiClient {
     }
 
     async fn get<T: DeserializeOwned>(&self, path: &str) -> Result<T> {
-        let url = format!("{}{}", self.bff_url, path);
+        let url = format!("{}{}", self.api_url, path);
         let response = self
             .client
             .get(&url)
@@ -73,7 +73,7 @@ impl ApiClient {
     }
 
     async fn post<B: Serialize, T: DeserializeOwned>(&self, path: &str, body: &B) -> Result<T> {
-        let url = format!("{}{}", self.bff_url, path);
+        let url = format!("{}{}", self.api_url, path);
         let response = self
             .client
             .post(&url)
@@ -94,7 +94,7 @@ impl ApiClient {
     }
 
     async fn delete(&self, path: &str) -> Result<()> {
-        let url = format!("{}{}", self.bff_url, path);
+        let url = format!("{}{}", self.api_url, path);
         let response = self
             .client
             .delete(&url)
@@ -115,7 +115,7 @@ impl ApiClient {
         path: &str,
         form: reqwest::multipart::Form,
     ) -> Result<T> {
-        let url = format!("{}{}", self.bff_url, path);
+        let url = format!("{}{}", self.api_url, path);
         let response = self
             .client
             .post(&url)

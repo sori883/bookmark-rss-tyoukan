@@ -7,7 +7,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export interface TestEnv {
   readonly DATABASE_URL: string
   readonly AUTH_BASE_URL: string
-  readonly BFF_BASE_URL: string
   readonly FEED_BASE_URL: string
   readonly AI_BASE_URL: string
   readonly NOTIFICATION_BASE_URL: string
@@ -44,7 +43,6 @@ export function loadTestEnv(): TestEnv {
   const env: TestEnv = {
     DATABASE_URL: requireEnv('DATABASE_URL'),
     AUTH_BASE_URL: process.env.AUTH_SERVICE_URL ?? 'http://localhost:3000',
-    BFF_BASE_URL: process.env.BFF_SERVICE_URL ?? 'http://localhost:3010',
     FEED_BASE_URL: process.env.FEED_SERVICE_URL ?? 'http://localhost:3001',
     AI_BASE_URL: process.env.AI_SERVICE_URL ?? 'http://localhost:3003',
     NOTIFICATION_BASE_URL: process.env.NOTIFICATION_SERVICE_URL ?? 'http://localhost:3004',

@@ -19,7 +19,7 @@ export class BookmarkRssStack extends cdk.Stack {
     // SSM パラメータ参照（値はユーザーが手動設定済み前提）
     const ssm = lookupSsmParams(this, stage)
 
-    // Lambda Functions (auth, bff, feed, notification)
+    // Lambda Functions (auth, feed, notification)
     const lambdaResult = createLambdaFunctions(this, { stage, ssm })
 
     // AgentCore Runtime (ai)

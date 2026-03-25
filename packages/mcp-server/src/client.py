@@ -8,14 +8,14 @@ from .config import settings
 logger = structlog.get_logger()
 
 
-class BffClientError(Exception):
+class ApiClientError(Exception):
     def __init__(self, status_code: int, message: str) -> None:
         self.status_code = status_code
         super().__init__(message)
 
 
-class BffClient:
-    def __init__(self, base_url: str = settings.bff_url, token: str = settings.jwt_token) -> None:
+class ApiClient:
+    def __init__(self, base_url: str = settings.api_url, token: str = settings.jwt_token) -> None:
         self._base_url = base_url
         self._token = token
 
@@ -38,14 +38,14 @@ class BffClient:
             if response.status_code >= 400:
                 body = response.text
                 logger.error(
-                    "bff_request_failed",
+                    "api_request_failed",
                     method=method,
                     path=path,
                     status=response.status_code,
                     body=body,
                 )
-                raise BffClientError(
-                    response.status_code, f"BFF error {response.status_code}: {body}"
+                raise ApiClientError(
+                    response.status_code, f"API error {response.status_code}: {body}"
                 )
             if response.status_code == 204:
                 return None

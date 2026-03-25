@@ -134,8 +134,9 @@ describe('GET /articles', () => {
 describe('GET /articles/:id', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  it('should return article detail', async () => {
-    mockGetArticle.mockResolvedValue(ARTICLE)
+  it('should return article detail and auto-mark unread as read', async () => {
+    mockGetArticle.mockResolvedValue(ARTICLE) // isRead: false
+    mockUpdateArticle.mockResolvedValue({ ...ARTICLE, isRead: true })
 
     const app = createApp()
     const res = await app.request('/articles/art-1')
@@ -143,6 +144,27 @@ describe('GET /articles/:id', () => {
     expect(res.status).toBe(200)
     const body = await res.json()
     expect(body.id).toBe('art-1')
+    expect(body.is_read).toBe(true)
+    expect(mockUpdateArticle).toHaveBeenCalledWith(
+      expect.anything(),
+      'art-1',
+      'user-1',
+      { isRead: true },
+    )
+  })
+
+  it('should not call updateArticle when article is already read', async () => {
+    const readArticle = { ...ARTICLE, isRead: true }
+    mockGetArticle.mockResolvedValue(readArticle)
+
+    const app = createApp()
+    const res = await app.request('/articles/art-1')
+
+    expect(res.status).toBe(200)
+    const body = await res.json()
+    expect(body.id).toBe('art-1')
+    expect(body.is_read).toBe(true)
+    expect(mockUpdateArticle).not.toHaveBeenCalled()
   })
 
   it('should return 404 for non-existent article', async () => {

@@ -123,5 +123,5 @@ async fn main() -> Result<()> {
 
 fn build_client(config: &config::AppConfig) -> Result<client::ApiClient> {
     let token = auth::token_store::load_token(&config.token_path())?;
-    client::ApiClient::new(&config.bff_url, &token)
+    client::ApiClient::new(&config.api_url, &token)
 }

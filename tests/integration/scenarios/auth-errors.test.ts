@@ -12,7 +12,7 @@ describe('auth-errors: 認証エラーの結合テスト', () => {
     env = loadTestEnv()
     await waitForServices([
       { baseUrl: env.FEED_BASE_URL, name: 'feed' },
-      { baseUrl: env.BFF_BASE_URL, name: 'bff' },
+      { baseUrl: env.NOTIFICATION_BASE_URL, name: 'notification' },
     ])
   })
 
@@ -29,14 +29,14 @@ describe('auth-errors: 認証エラーの結合テスト', () => {
       expect(res.status).toBe(401)
     })
 
-    it('bff サービスへのリクエストが 401 を返す', async () => {
+    it('notification サービスへのリクエストが 401 を返す', async () => {
       const expiredToken = await generateCustomJwt(
         { sub: 'test-user-1' },
         '-1s',
       )
-      const client = createAuthClient(env.BFF_BASE_URL, expiredToken)
+      const client = createAuthClient(env.NOTIFICATION_BASE_URL, expiredToken)
 
-      const res = await client.get('/feeds')
+      const res = await client.get('/notifications')
       expect(res.status).toBe(401)
     })
   })
@@ -72,24 +72,19 @@ describe('auth-errors: 認証エラーの結合テスト', () => {
       expect(res.status).toBe(401)
     })
 
-    it('bff: GET /feeds に認証ヘッダなしで 401', async () => {
-      const res = await fetchWithoutAuth(`${env.BFF_BASE_URL}/feeds`)
+    it('feed: GET /articles に認証ヘッダなしで 401', async () => {
+      const res = await fetchWithoutAuth(`${env.FEED_BASE_URL}/articles`)
       expect(res.status).toBe(401)
     })
 
-    it('bff: GET /articles に認証ヘッダなしで 401', async () => {
-      const res = await fetchWithoutAuth(`${env.BFF_BASE_URL}/articles`)
+    it('feed: GET /settings に認証ヘッダなしで 401', async () => {
+      const res = await fetchWithoutAuth(`${env.FEED_BASE_URL}/settings`)
       expect(res.status).toBe(401)
     })
 
-    it('bff: GET /settings に認証ヘッダなしで 401', async () => {
-      const res = await fetchWithoutAuth(`${env.BFF_BASE_URL}/settings`)
-      expect(res.status).toBe(401)
-    })
-
-    it('bff: GET /notifications に認証ヘッダなしで 401', async () => {
+    it('notification: GET /notifications に認証ヘッダなしで 401', async () => {
       const res = await fetchWithoutAuth(
-        `${env.BFF_BASE_URL}/notifications`,
+        `${env.NOTIFICATION_BASE_URL}/notifications`,
       )
       expect(res.status).toBe(401)
     })

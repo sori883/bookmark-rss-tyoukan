@@ -20,25 +20,24 @@ interface PaginatedNotifications {
   readonly limit: number
 }
 
-describe('bff-notification: bff -> notification 結合テスト', () => {
+describe('notification-e2e: notification サービス結合テスト', () => {
   let env: TestEnv
   let token: string
-  let bffClient: ReturnType<typeof createAuthClient>
+  let notifClient: ReturnType<typeof createAuthClient>
 
   beforeAll(async () => {
     env = loadTestEnv()
     await waitForServices([
-      { baseUrl: env.BFF_BASE_URL, name: 'bff' },
       { baseUrl: env.NOTIFICATION_BASE_URL, name: 'notification' },
     ])
     token = await generateUserJwt('test-user-1')
-    bffClient = createAuthClient(env.BFF_BASE_URL, token)
+    notifClient = createAuthClient(env.NOTIFICATION_BASE_URL, token)
   })
 
   describe('GET /notifications', () => {
     it('通知一覧を取得できる', async () => {
       const res =
-        await bffClient.get<PaginatedNotifications>('/notifications')
+        await notifClient.get<PaginatedNotifications>('/notifications')
 
       expect(res.status).toBe(200)
       expect(res.data.data).toBeDefined()
@@ -49,7 +48,7 @@ describe('bff-notification: bff -> notification 結合テスト', () => {
     })
 
     it('ページネーションパラメータを指定できる', async () => {
-      const res = await bffClient.get<PaginatedNotifications>(
+      const res = await notifClient.get<PaginatedNotifications>(
         '/notifications?page=1&limit=5',
       )
 
@@ -60,7 +59,7 @@ describe('bff-notification: bff -> notification 結合テスト', () => {
 
     it('通知レスポンスの各フィールドが正しい型を持つ', async () => {
       const res =
-        await bffClient.get<PaginatedNotifications>('/notifications')
+        await notifClient.get<PaginatedNotifications>('/notifications')
 
       expect(res.status).toBe(200)
 
@@ -80,7 +79,7 @@ describe('bff-notification: bff -> notification 結合テスト', () => {
     it('通知を既読に更新できる', async () => {
       // まず通知一覧を取得して、更新対象の ID を得る
       const listRes =
-        await bffClient.get<PaginatedNotifications>('/notifications')
+        await notifClient.get<PaginatedNotifications>('/notifications')
 
       expect(listRes.status).toBe(200)
 
@@ -91,7 +90,7 @@ describe('bff-notification: bff -> notification 結合テスト', () => {
 
       const targetId = listRes.data.data[0].id
 
-      const patchRes = await bffClient.patch<NotificationResponse>(
+      const patchRes = await notifClient.patch<NotificationResponse>(
         `/notifications/${targetId}`,
         { is_read: true },
       )
@@ -103,7 +102,7 @@ describe('bff-notification: bff -> notification 結合テスト', () => {
 
     it('通知を未読に戻せる', async () => {
       const listRes =
-        await bffClient.get<PaginatedNotifications>('/notifications')
+        await notifClient.get<PaginatedNotifications>('/notifications')
 
       expect(listRes.status).toBe(200)
 
@@ -114,13 +113,13 @@ describe('bff-notification: bff -> notification 結合テスト', () => {
       const targetId = listRes.data.data[0].id
 
       // 既読にする
-      await bffClient.patch<NotificationResponse>(
+      await notifClient.patch<NotificationResponse>(
         `/notifications/${targetId}`,
         { is_read: true },
       )
 
       // 未読に戻す
-      const patchRes = await bffClient.patch<NotificationResponse>(
+      const patchRes = await notifClient.patch<NotificationResponse>(
         `/notifications/${targetId}`,
         { is_read: false },
       )
@@ -131,7 +130,7 @@ describe('bff-notification: bff -> notification 結合テスト', () => {
     })
 
     it('存在しない通知 ID で 404 を返す', async () => {
-      const res = await bffClient.patch(
+      const res = await notifClient.patch(
         '/notifications/00000000-0000-0000-0000-000000000000',
         { is_read: true },
       )

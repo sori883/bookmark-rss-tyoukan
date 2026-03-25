@@ -5,6 +5,7 @@ import { errorResponse } from './lib/errors.js'
 import feedsRoute from './routes/feeds.js'
 import articlesRoute from './routes/articles.js'
 import bookmarksRoute from './routes/bookmarks.js'
+import settingsRoute from './routes/settings.js'
 
 export function buildApp() {
   const app = new Hono()
@@ -14,6 +15,7 @@ export function buildApp() {
   app.route('/feeds', feedsRoute)
   app.route('/articles', articlesRoute)
   app.route('/bookmarks', bookmarksRoute)
+  app.route('/settings', settingsRoute)
 
   app.onError((err, c) => {
     logger.error({ err, path: c.req.path, method: c.req.method }, 'Request error')

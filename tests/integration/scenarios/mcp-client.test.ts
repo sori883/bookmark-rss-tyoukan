@@ -5,8 +5,8 @@ import { createAuthClient } from '../helpers/http-client'
 import { waitForServices } from '../helpers/wait-for-service'
 
 /**
- * MCP ツール定義と同等の操作パターンで BFF エンドポイントを検証する。
- * MCP server (Python) は BffClient 経由で BFF にアクセスするため、
+ * MCP ツール定義と同等の操作パターンで feed エンドポイントを検証する。
+ * MCP server (Python) は ApiClient 経由で feed にアクセスするため、
  * ここでは同じリクエストパターンを vitest から直接実行する。
  */
 
@@ -50,28 +50,27 @@ interface BookmarkResponse {
   readonly updated_at: string
 }
 
-describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
+describe('mcp-client: MCP ツール相当の feed 操作テスト', () => {
   let env: TestEnv
   let token: string
-  let bffClient: ReturnType<typeof createAuthClient>
+  let feedClient: ReturnType<typeof createAuthClient>
   const createdFeedIds: string[] = []
   const createdBookmarkIds: string[] = []
 
   beforeAll(async () => {
     env = loadTestEnv()
     await waitForServices([
-      { baseUrl: env.BFF_BASE_URL, name: 'bff' },
       { baseUrl: env.FEED_BASE_URL, name: 'feed' },
     ])
     token = await generateUserJwt('test-user-1')
-    bffClient = createAuthClient(env.BFF_BASE_URL, token)
+    feedClient = createAuthClient(env.FEED_BASE_URL, token)
   })
 
   afterAll(async () => {
     // テストで作成したブックマークを削除
     for (const bookmarkId of createdBookmarkIds) {
       try {
-        await bffClient.delete(`/bookmarks/${bookmarkId}`)
+        await feedClient.delete(`/bookmarks/${bookmarkId}`)
       } catch {
         // クリーンアップ失敗は無視
       }
@@ -80,7 +79,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
     // テストで作成したフィードを削除
     for (const feedId of createdFeedIds) {
       try {
-        await bffClient.delete(`/feeds/${feedId}`)
+        await feedClient.delete(`/feeds/${feedId}`)
       } catch {
         // クリーンアップ失敗は無視
       }
@@ -89,7 +88,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
 
   describe('list_feeds 相当: GET /feeds', () => {
     it('フィード一覧を取得できる', async () => {
-      const res = await bffClient.get<FeedResponse[]>('/feeds')
+      const res = await feedClient.get<FeedResponse[]>('/feeds')
 
       expect(res.status).toBe(200)
       expect(Array.isArray(res.data)).toBe(true)
@@ -104,13 +103,13 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
 
     it('テスト用フィードを登録してから一覧に含まれることを確認', async () => {
       const uniqueUrl = `https://github.blog/feed/?t=mcp-${Date.now()}`
-      const createRes = await bffClient.post<FeedResponse>('/feeds', {
+      const createRes = await feedClient.post<FeedResponse>('/feeds', {
         url: uniqueUrl,
       })
       expect(createRes.status).toBe(201)
       createdFeedIds.push(createRes.data.id)
 
-      const listRes = await bffClient.get<FeedResponse[]>('/feeds')
+      const listRes = await feedClient.get<FeedResponse[]>('/feeds')
       expect(listRes.status).toBe(200)
 
       const found = listRes.data.some((feed) => feed.id === createRes.data.id)
@@ -120,7 +119,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
 
   describe('list_articles 相当: GET /articles', () => {
     it('記事一覧を取得できる', async () => {
-      const res = await bffClient.get<PaginatedResponse<ArticleResponse>>(
+      const res = await feedClient.get<PaginatedResponse<ArticleResponse>>(
         '/articles',
       )
 
@@ -137,7 +136,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
       }
 
       const feedId = createdFeedIds[0]
-      const res = await bffClient.get<PaginatedResponse<ArticleResponse>>(
+      const res = await feedClient.get<PaginatedResponse<ArticleResponse>>(
         `/articles?feed_id=${feedId}`,
       )
 
@@ -153,7 +152,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
 
   describe('list_bookmarks 相当: GET /bookmarks', () => {
     it('ブックマーク一覧を取得できる', async () => {
-      const res = await bffClient.get<PaginatedResponse<BookmarkResponse>>(
+      const res = await feedClient.get<PaginatedResponse<BookmarkResponse>>(
         '/bookmarks',
       )
 
@@ -167,7 +166,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
 
   describe('search_bookmarks 相当: GET /bookmarks/search', () => {
     it('キーワードでブックマーク検索ができる', async () => {
-      const res = await bffClient.get<PaginatedResponse<BookmarkResponse>>(
+      const res = await feedClient.get<PaginatedResponse<BookmarkResponse>>(
         '/bookmarks/search?q=test',
       )
 
@@ -177,7 +176,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
     })
 
     it('空のキーワードでもエラーにならない', async () => {
-      const res = await bffClient.get<PaginatedResponse<BookmarkResponse>>(
+      const res = await feedClient.get<PaginatedResponse<BookmarkResponse>>(
         '/bookmarks/search?q=',
       )
 
@@ -186,7 +185,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
     })
 
     it('検索結果にはブックマークの必須フィールドが含まれる', async () => {
-      const res = await bffClient.get<PaginatedResponse<BookmarkResponse>>(
+      const res = await feedClient.get<PaginatedResponse<BookmarkResponse>>(
         '/bookmarks/search?q=bookmark',
       )
 
@@ -205,7 +204,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
     it('URL 指定でブックマークを追加・削除できる', async () => {
       // add_bookmark 相当: POST /bookmarks with { url }
       // 実際のURLから本文取得するため、取得可能なURLを使用
-      const addRes = await bffClient.post<BookmarkResponse>('/bookmarks', {
+      const addRes = await feedClient.post<BookmarkResponse>('/bookmarks', {
         url: 'https://github.blog/',
       })
 
@@ -221,7 +220,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
       createdBookmarkIds.push(bookmarkId)
 
       // remove_bookmark 相当: DELETE /bookmarks/:id
-      const removeRes = await bffClient.delete(`/bookmarks/${bookmarkId}`)
+      const removeRes = await feedClient.delete(`/bookmarks/${bookmarkId}`)
       expect(removeRes.status).toBe(204)
 
       // 削除済みなのでクリーンアップリストから除去
@@ -231,7 +230,7 @@ describe('mcp-client: MCP ツール相当の BFF 操作テスト', () => {
       }
 
       // 削除後に一覧に含まれないことを確認
-      const listRes = await bffClient.get<PaginatedResponse<BookmarkResponse>>(
+      const listRes = await feedClient.get<PaginatedResponse<BookmarkResponse>>(
         '/bookmarks',
       )
       const found = listRes.data.data.some((b) => b.id === bookmarkId)

@@ -2,10 +2,10 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from .client import BffClient
+from .client import ApiClient
 
 mcp = FastMCP("bookmark-rss")
-_client = BffClient()
+_client = ApiClient()
 
 
 @mcp.tool()

@@ -4,10 +4,10 @@ from typing import Any
 import httpx
 import pytest
 
-from src.client import BffClient, BffClientError
+from src.client import ApiClient, ApiClientError
 
 FAKE_TOKEN = "test-jwt-token"
-BASE_URL = "http://bff-test:3010"
+BASE_URL = "http://api-test:3001"
 
 
 def make_transport(
@@ -43,8 +43,8 @@ def make_transport(
     return httpx.MockTransport(handler)
 
 
-def make_client(transport: httpx.MockTransport) -> BffClient:
-    client = BffClient(base_url=BASE_URL, token=FAKE_TOKEN)
+def make_client(transport: httpx.MockTransport) -> ApiClient:
+    client = ApiClient(base_url=BASE_URL, token=FAKE_TOKEN)
 
     original_build = client._build_client
 
@@ -228,6 +228,6 @@ async def test_error_handling() -> None:
         status=404, body={"error": {"code": "NOT_FOUND", "message": "not found"}}
     )
     client = make_client(transport)
-    with pytest.raises(BffClientError) as exc_info:
+    with pytest.raises(ApiClientError) as exc_info:
         await client.list_feeds()
     assert exc_info.value.status_code == 404

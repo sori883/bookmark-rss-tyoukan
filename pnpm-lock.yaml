@@ -207,58 +207,6 @@ importers:
         specifier: ^3.0.0
         version: 3.2.4(@types/debug@4.1.13)(@types/node@22.19.15)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)
 
-  services/bff:
-    dependencies:
-      '@bookmark-rss/db':
-        specifier: workspace:*
-        version: link:../../packages/db
-      '@hono/node-server':
-        specifier: ^1.13.0
-        version: 1.19.11(hono@4.12.9)
-      '@hono/zod-validator':
-        specifier: ^0.4.0
-        version: 0.4.3(hono@4.12.9)(zod@3.25.76)
-      drizzle-orm:
-        specifier: ^0.41.0
-        version: 0.41.0(@opentelemetry/api@1.9.0)(gel@2.2.0)(kysely@0.28.14)(postgres@3.4.8)
-      hono:
-        specifier: ^4.7.0
-        version: 4.12.9
-      jose:
-        specifier: ^6.0.0
-        version: 6.2.2
-      pino:
-        specifier: ^9.6.0
-        version: 9.14.0
-      postgres:
-        specifier: ^3.4.0
-        version: 3.4.8
-      zod:
-        specifier: ^3.24.0
-        version: 3.25.76
-    devDependencies:
-      '@eslint/js':
-        specifier: ^9.0.0
-        version: 9.39.4
-      '@types/node':
-        specifier: ^22.0.0
-        version: 22.19.15
-      eslint:
-        specifier: ^9.0.0
-        version: 9.39.4(jiti@2.6.1)
-      tsx:
-        specifier: ^4.19.0
-        version: 4.21.0
-      typescript:
-        specifier: ^5.7.0
-        version: 5.9.3
-      typescript-eslint:
-        specifier: ^8.0.0
-        version: 8.57.2(eslint@9.39.4(jiti@2.6.1))(typescript@5.9.3)
-      vitest:
-        specifier: ^3.0.0
-        version: 3.2.4(@types/debug@4.1.13)(@types/node@22.19.15)(jiti@2.6.1)(jsdom@25.0.1)(lightningcss@1.32.0)(terser@5.46.1)(tsx@4.21.0)
-
   services/feed:
     dependencies:
       '@bookmark-rss/db':

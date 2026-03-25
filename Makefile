@@ -1,6 +1,6 @@
 .PHONY: db db-stop dev build test clean \
-       auth-dev bff-dev feed-dev ai-dev notification-dev web-dev \
-       auth-test bff-test feed-test ai-test notification-test web-test cli-test \
+       auth-dev feed-dev ai-dev notification-dev web-dev \
+       auth-test feed-test ai-test notification-test web-test cli-test \
        migrate lint typecheck \
        seed-test test-integration \
        deploy deploy-diff destroy
@@ -18,11 +18,10 @@ db-reset:
 # ─── 全サービス ─────────────────────────────────────────
 dev: db
 	@echo "Starting all services..."
-	@make -j auth-dev bff-dev feed-dev ai-dev notification-dev web-dev
+	@make -j auth-dev feed-dev ai-dev notification-dev web-dev
 
 build:
 	cd services/auth && pnpm build
-	cd services/bff && pnpm build
 	cd services/feed && pnpm build
 	cd services/notification && pnpm build
 	cd services/ai && uv build
@@ -31,7 +30,6 @@ build:
 
 test:
 	cd services/auth && pnpm test
-	cd services/bff && pnpm test
 	cd services/feed && pnpm test
 	cd services/notification && pnpm test
 	cd services/ai && uv run pytest
@@ -40,7 +38,6 @@ test:
 
 lint:
 	cd services/auth && pnpm lint
-	cd services/bff && pnpm lint
 	cd services/feed && pnpm lint
 	cd services/notification && pnpm lint
 	cd services/ai && uv run ruff check .
@@ -49,7 +46,6 @@ lint:
 
 typecheck:
 	cd services/auth && pnpm typecheck
-	cd services/bff && pnpm typecheck
 	cd services/feed && pnpm typecheck
 	cd services/notification && pnpm typecheck
 	cd services/ai && uv run pyright .
@@ -58,9 +54,6 @@ typecheck:
 # ─── 個別サービス dev ───────────────────────────────────
 auth-dev:
 	cd services/auth && pnpm dev
-
-bff-dev:
-	cd services/bff && pnpm dev
 
 feed-dev:
 	cd services/feed && pnpm dev
@@ -77,9 +70,6 @@ web-dev:
 # ─── 個別サービス test ──────────────────────────────────
 auth-test:
 	cd services/auth && pnpm test
-
-bff-test:
-	cd services/bff && pnpm test
 
 feed-test:
 	cd services/feed && pnpm test

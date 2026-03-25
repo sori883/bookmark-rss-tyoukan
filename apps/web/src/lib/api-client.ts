@@ -14,7 +14,7 @@ import type {
   ImportOpmlResponse,
   ErrorResponse,
 } from '~/types/api'
-import { BFF_BASE_URL } from './constants'
+import { API_BASE_URL, NOTIFICATION_BASE_URL } from './constants'
 import { fetchJwt } from './auth'
 
 class ApiError extends Error {
@@ -28,14 +28,22 @@ class ApiError extends Error {
   }
 }
 
+function resolveBaseUrl(path: string): string {
+  if (path.startsWith('/notifications')) {
+    return NOTIFICATION_BASE_URL
+  }
+  return API_BASE_URL
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {},
   retry = true,
 ): Promise<T> {
+  const baseUrl = resolveBaseUrl(path)
   const token = await fetchJwt()
 
-  const res = await fetch(`${BFF_BASE_URL}${path}`, {
+  const res = await fetch(`${baseUrl}${path}`, {
     ...options,
     headers: {
       ...options.headers,
@@ -45,7 +53,7 @@ async function request<T>(
 
   if (res.status === 401 && retry) {
     const newToken = await fetchJwt(true)
-    const retryRes = await fetch(`${BFF_BASE_URL}${path}`, {
+    const retryRes = await fetch(`${baseUrl}${path}`, {
       ...options,
       headers: {
         ...options.headers,
