@@ -8,24 +8,30 @@ import bookmarksRoute from './routes/bookmarks.js'
 import notificationsRoute from './routes/notifications.js'
 import settingsRoute from './routes/settings.js'
 
-const app = new Hono()
+export function buildApp() {
+  const app = new Hono()
 
-app.get('/health', (c) => c.json({ status: 'ok' }))
+  app.get('/health', (c) => c.json({ status: 'ok' }))
 
-app.route('/feeds', feedsRoute)
-app.route('/articles', articlesRoute)
-app.route('/bookmarks', bookmarksRoute)
-app.route('/notifications', notificationsRoute)
-app.route('/settings', settingsRoute)
+  app.route('/feeds', feedsRoute)
+  app.route('/articles', articlesRoute)
+  app.route('/bookmarks', bookmarksRoute)
+  app.route('/notifications', notificationsRoute)
+  app.route('/settings', settingsRoute)
 
-app.onError((err, c) => {
-  logger.error({ err, path: c.req.path, method: c.req.method }, 'Request error')
-  return errorResponse(c, err)
-})
+  app.onError((err, c) => {
+    logger.error({ err, path: c.req.path, method: c.req.method }, 'Request error')
+    return errorResponse(c, err)
+  })
 
-const port = Number(process.env.PORT ?? 3010)
-logger.info({ port }, 'bff service starting')
+  return { app }
+}
 
-serve({ fetch: app.fetch, port })
+function startServer() {
+  const { app } = buildApp()
+  const port = Number(process.env.PORT ?? 3010)
+  logger.info({ port }, 'bff service starting')
+  serve({ fetch: app.fetch, port })
+}
 
-export default app
+startServer()

@@ -6,22 +6,28 @@ import feedsRoute from './routes/feeds.js'
 import articlesRoute from './routes/articles.js'
 import bookmarksRoute from './routes/bookmarks.js'
 
-const app = new Hono()
+export function buildApp() {
+  const app = new Hono()
 
-app.get('/health', (c) => c.json({ status: 'ok' }))
+  app.get('/health', (c) => c.json({ status: 'ok' }))
 
-app.route('/feeds', feedsRoute)
-app.route('/articles', articlesRoute)
-app.route('/bookmarks', bookmarksRoute)
+  app.route('/feeds', feedsRoute)
+  app.route('/articles', articlesRoute)
+  app.route('/bookmarks', bookmarksRoute)
 
-app.onError((err, c) => {
-  logger.error({ err, path: c.req.path, method: c.req.method }, 'Request error')
-  return errorResponse(c, err)
-})
+  app.onError((err, c) => {
+    logger.error({ err, path: c.req.path, method: c.req.method }, 'Request error')
+    return errorResponse(c, err)
+  })
 
-const port = Number(process.env.PORT ?? 3001)
-logger.info({ port }, 'feed service starting')
+  return { app }
+}
 
-serve({ fetch: app.fetch, port })
+function startServer() {
+  const { app } = buildApp()
+  const port = Number(process.env.PORT ?? 3001)
+  logger.info({ port }, 'feed service starting')
+  serve({ fetch: app.fetch, port })
+}
 
-export default app
+startServer()

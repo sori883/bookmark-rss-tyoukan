@@ -2,7 +2,8 @@
        auth-dev bff-dev feed-dev ai-dev notification-dev web-dev \
        auth-test bff-test feed-test ai-test notification-test web-test cli-test \
        migrate lint typecheck \
-       seed-test test-integration
+       seed-test test-integration \
+       deploy deploy-diff destroy
 
 # ─── DB ────────────────────────────────────────────────
 db:
@@ -105,6 +106,16 @@ seed-test:
 
 test-integration: db
 	cd tests/integration && pnpm test
+
+# ─── CDK デプロイ ──────────────────────────────────────────
+deploy:
+	cd infra && npx cdk deploy --all
+
+deploy-diff:
+	cd infra && npx cdk diff --all
+
+destroy:
+	cd infra && npx cdk destroy --all
 
 # ─── クリーンアップ ─────────────────────────────────────
 clean:
