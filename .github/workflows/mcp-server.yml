@@ -1,0 +1,46 @@
+name: mcp-server
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - packages/mcp-server/**
+  pull_request:
+    branches: [main]
+    paths:
+      - packages/mcp-server/**
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: typecheck / lint / test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+        working-directory: packages/mcp-server
+
+      - name: Lint
+        run: uv run ruff check .
+        working-directory: packages/mcp-server
+
+      - name: Typecheck
+        run: uv run pyright .
+        working-directory: packages/mcp-server
+
+      - name: Test
+        run: uv run pytest
+        working-directory: packages/mcp-server
