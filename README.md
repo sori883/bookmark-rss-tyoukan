@@ -15,23 +15,10 @@ RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合
 
 ## セットアップ
 
-### 1. 依存インストール
+### 1. 環境変数の設定
 
-```bash
-# corepack を有効化して pnpm のバージョンを合わせる
-corepack enable
-
-# Node.js 依存
-pnpm install
-
-# AI サービスの Python 依存
-cd services/ai && uv sync
-```
-
-### 2. 環境変数の設定
-
-プロジェクトルートの `.env.test` をテンプレートとして環境変数を設定する。
-以下の値は自分の環境に合わせて書き換えること。
+プロジェクトルートに `.env.test` を作成し、以下の値を自分の環境に合わせて設定する。
+Makefile が自動で読み込むため、`source` は不要。
 
 ```env
 # --- Database ---
@@ -66,69 +53,46 @@ TEST_WEBHOOK_URL=<Discord or Slack の Webhook URL>
 TEST_WEBHOOK_TYPE=discord
 ```
 
-### 3. PostgreSQL 起動
+### 2. 一括セットアップ
 
 ```bash
-make db
+make setup
 ```
 
-Docker Compose で PostgreSQL 17 コンテナが起動する (ポート 5432)。
-
-### 4. DBマイグレーション
-
-```bash
-make migrate
-```
-
-`packages/db` の Drizzle マイグレーションが実行される。
-
-### 5. シードデータ投入
-
-```bash
-pnpm seed-test
-```
-
-テストユーザー、サービスアカウント (AI)、JWKS 鍵ペア、Webhook 設定がDBに登録される。
-`.env.test` の `AI_CLIENT_ID` / `AI_CLIENT_SECRET` / `TEST_WEBHOOK_URL` を参照するため、先に環境変数を設定しておくこと。
+以下を順番に実行する:
+- Docker Compose で PostgreSQL 起動
+- `pnpm install` + `uv sync` (依存インストール)
+- DB マイグレーション
+- シードデータ投入 (テストユーザー, JWKS鍵, サービスアカウント, Webhook設定)
 
 ## サービス起動
 
-### 環境変数の読み込み
+Makefile が `.env.test` を自動で読み込むため、手動での `source` は不要。
 
-各サービスは `.env.test` の環境変数を必要とする。起動前にシェルに読み込む。
+### バックグラウンド起動 (推奨)
 
 ```bash
-set -a && source .env.test && set +a
+make dev-bg
 ```
 
-### 一括起動
+全サービスをバックグラウンドで起動し、ログは `logs/<service>.log` に出力される。
+
+```bash
+# ログ確認
+tail -f logs/auth.log
+tail -f logs/feed.log
+
+# 全サービス停止
+make dev-stop
+```
+
+### フォアグラウンド起動
 
 ```bash
 make dev
 ```
 
-auth, feed, ai, notification, web を並列起動する。ログが混在するため、個別起動を推奨。
-
-### 個別起動 (推奨)
-
-各ターミナルで環境変数を読み込んでから実行する。
-
-```bash
-# ターミナル1: auth (port 3000)
-cd services/auth && pnpm dev
-
-# ターミナル2: feed (port 3001)
-cd services/feed && pnpm dev
-
-# ターミナル3: ai (port 3003)
-cd services/ai && uv run uvicorn src.main:app --reload --port 3003
-
-# ターミナル4: notification (port 3004)
-cd services/notification && pnpm dev
-
-# ターミナル5: web (port 5173)
-cd apps/web && pnpm dev
-```
+全サービスを並列起動する。ログが混在するため `dev-bg` を推奨。
 
 ### ポート一覧
 

@@ -1,9 +1,18 @@
-.PHONY: db db-stop dev build test clean \
+.PHONY: db db-stop dev dev-bg dev-stop build test clean \
        auth-dev feed-dev ai-dev notification-dev web-dev \
        auth-test feed-test ai-test notification-test web-test cli-test \
        migrate lint typecheck \
-       seed-test test-integration \
+       seed-test test-integration setup \
        deploy deploy-diff destroy
+
+# ─── 環境変数の自動読み込み ──────────────────────────────
+# .env.test が存在すれば読み込み、全コマンドに環境変数を渡す
+ifneq (,$(wildcard .env.test))
+  include .env.test
+  export
+endif
+
+PID_DIR := .pids
 
 # ─── DB ────────────────────────────────────────────────
 db:
@@ -15,10 +24,57 @@ db-stop:
 db-reset:
 	docker compose down -v && docker compose up -d
 
-# ─── 全サービス ─────────────────────────────────────────
+# ─── 初期セットアップ (初回のみ) ─────────────────────────
+setup: db
+	@echo "==> Installing dependencies..."
+	pnpm install
+	cd services/ai && uv sync
+	@echo "==> Running migration..."
+	cd packages/db && pnpm generate && pnpm migrate
+	@echo "==> Seeding test data..."
+	pnpm seed-test
+	@echo "==> Setup complete!"
+
+# ─── 全サービス (フォアグラウンド, ログ混在) ───────────────
 dev: db
 	@echo "Starting all services..."
 	@make -j auth-dev feed-dev ai-dev notification-dev web-dev
+
+# ─── 全サービス (バックグラウンド, 個別ログ) ───────────────
+ROOT_DIR := $(shell pwd)
+
+dev-bg: dev-stop db
+	@mkdir -p $(ROOT_DIR)/$(PID_DIR) $(ROOT_DIR)/logs
+	@echo "Starting auth (port 3000)..."
+	@cd services/auth && pnpm dev > $(ROOT_DIR)/logs/auth.log 2>&1 & echo $$! > $(ROOT_DIR)/$(PID_DIR)/auth.pid
+	@echo "Starting feed (port 3001)..."
+	@cd services/feed && pnpm dev > $(ROOT_DIR)/logs/feed.log 2>&1 & echo $$! > $(ROOT_DIR)/$(PID_DIR)/feed.pid
+	@echo "Starting ai (port 3003)..."
+	@cd services/ai && uv run uvicorn src.main:app --reload --port 3003 > $(ROOT_DIR)/logs/ai.log 2>&1 & echo $$! > $(ROOT_DIR)/$(PID_DIR)/ai.pid
+	@echo "Starting notification (port 3004)..."
+	@cd services/notification && pnpm dev > $(ROOT_DIR)/logs/notification.log 2>&1 & echo $$! > $(ROOT_DIR)/$(PID_DIR)/notification.pid
+	@echo "Starting web (port 5173)..."
+	@cd apps/web && pnpm dev > $(ROOT_DIR)/logs/web.log 2>&1 & echo $$! > $(ROOT_DIR)/$(PID_DIR)/web.pid
+	@sleep 3
+	@echo "All services started. Logs: logs/<service>.log"
+	@echo "Stop with: make dev-stop"
+
+# ─── 全サービス停止 ───────────────────────────────────────
+dev-stop:
+	@if [ -d $(PID_DIR) ]; then \
+		for f in $(PID_DIR)/*.pid; do \
+			if [ -f "$$f" ]; then \
+				pid=$$(cat "$$f"); \
+				kill $$pid 2>/dev/null && echo "Stopped $$(basename $$f .pid) (pid $$pid)" || true; \
+				rm -f "$$f"; \
+			fi; \
+		done; \
+		rmdir $(PID_DIR) 2>/dev/null || true; \
+	fi
+	@pkill -f "tsx watch" 2>/dev/null || true
+	@pkill -f "uvicorn src.main:app" 2>/dev/null || true
+	@pkill -f "vinxi" 2>/dev/null || true
+	@echo "All services stopped."
 
 build:
 	cd services/auth && pnpm build

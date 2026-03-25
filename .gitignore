@@ -7,6 +7,10 @@
 .env.test
 .env.*.local
 
+# dev サービスのログと PID
+logs/
+.pids/
+
 # reference（セットアップ後は不要）
 reference/
 
