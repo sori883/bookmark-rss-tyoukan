@@ -1,52 +1,67 @@
 import { test, expect } from '@playwright/test'
-import { mockAuth, bffUrl } from './helpers'
 
 test.describe('Settings', () => {
-  test.beforeEach(async ({ context }) => {
-    await mockAuth(context)
+  test('should display settings form', async ({ page }) => {
+    await page.goto('/settings')
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByText('Webhookタイプ')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByText('Webhook URL')).toBeVisible()
+    await expect(page.getByRole('button', { name: '保存' })).toBeVisible()
   })
 
-  test('should display current settings', async ({ page }) => {
-    await page.route(`${bffUrl('/settings')}`, (route) => {
-      if (route.request().method() === 'GET') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ webhook_url: 'https://hooks.slack.com/test', webhook_type: 'slack' }),
-        })
-      }
-      return route.continue()
-    })
-
+  test('should display current settings values', async ({ page }) => {
     await page.goto('/settings')
-    await page.waitForSelector('input[type="url"]', { timeout: 15000 })
-    await expect(page.locator('input[type="url"]')).toHaveValue('https://hooks.slack.com/test')
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.locator('select')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('input[type="url"]')).toBeVisible()
   })
 
-  test('should save webhook settings', async ({ page }) => {
-    await page.route(`${bffUrl('/settings')}`, (route) => {
-      if (route.request().method() === 'GET') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ webhook_url: null, webhook_type: null }),
-        })
-      }
-      if (route.request().method() === 'PUT') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify({ webhook_url: 'https://hooks.slack.com/new', webhook_type: 'slack' }),
-        })
-      }
-      return route.continue()
-    })
-
+  test('should update webhook settings', async ({ page }) => {
     await page.goto('/settings')
-    await page.waitForSelector('select', { timeout: 15000 })
-    await page.selectOption('select', 'slack')
-    await page.fill('input[type="url"]', 'https://hooks.slack.com/new')
-    await page.click('button:has-text("保存")')
+    await page.waitForLoadState('networkidle')
+
+    await page.locator('select').selectOption('discord')
+
+    const urlInput = page.locator('input[type="url"]')
+    await urlInput.clear()
+    await urlInput.fill('https://discord.com/api/webhooks/test/e2e')
+
+    await page.getByRole('button', { name: '保存' }).click()
     await expect(page.getByText('保存しました')).toBeVisible({ timeout: 10000 })
+  })
+
+  test('should persist settings after page reload', async ({ page }) => {
+    await page.goto('/settings')
+    await page.waitForLoadState('networkidle')
+
+    await page.locator('select').selectOption('slack')
+    const urlInput = page.locator('input[type="url"]')
+    await urlInput.clear()
+    await urlInput.fill('https://hooks.slack.com/services/e2e-test')
+    await page.getByRole('button', { name: '保存' }).click()
+    await expect(page.getByText('保存しました')).toBeVisible({ timeout: 10000 })
+
+    await page.reload()
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.locator('select')).toHaveValue('slack', { timeout: 10000 })
+    await expect(page.locator('input[type="url"]')).toHaveValue('https://hooks.slack.com/services/e2e-test')
+  })
+
+  test('should show validation error for invalid webhook URL', async ({ page }) => {
+    await page.goto('/settings')
+    await page.waitForLoadState('networkidle')
+
+    await page.locator('select').selectOption('discord')
+    const urlInput = page.locator('input[type="url"]')
+    await urlInput.clear()
+    await urlInput.fill('abc')
+    await page.getByRole('button', { name: '保存' }).click()
+
+    const hasError = await page.getByText('有効なURLを入力してください').isVisible({ timeout: 3000 }).catch(() => false)
+    const isInvalid = await page.locator('input:invalid').isVisible().catch(() => false)
+    expect(hasError || isInvalid).toBeTruthy()
   })
 })

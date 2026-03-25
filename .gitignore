@@ -46,6 +46,7 @@ htmlcov/
 .pytest_cache/
 playwright-report/
 test-results/
+e2e/.auth/
 
 # ─── ビルド・デプロイ ────────────────────────────────────
 cdk.out/

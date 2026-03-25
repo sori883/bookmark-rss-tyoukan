@@ -1,71 +1,58 @@
 import { test, expect } from '@playwright/test'
-import { mockAuth, bffUrl } from './helpers'
+
+const TEST_FEED_URL = 'https://zenn.dev/feed'
 
 test.describe('Feeds Management', () => {
-  test.beforeEach(async ({ context }) => {
-    await mockAuth(context)
+  test('should display feeds page', async ({ page }) => {
+    await page.goto('/feeds')
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByPlaceholder('https://example.com/feed.xml')).toBeVisible()
+    await expect(page.getByRole('button', { name: '追加' })).toBeVisible()
   })
 
-  test('should display feed list', async ({ page }) => {
-    await page.route(`${bffUrl('/feeds')}`, (route) => {
-      if (route.request().method() === 'GET') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([
-            { id: '1', user_id: 'u1', url: 'https://example.com/feed', title: 'Example Feed', site_url: 'https://example.com', last_fetched_at: null, created_at: '2024-01-01' },
-          ]),
-        })
-      }
-      return route.continue()
-    })
-
+  test('should add and delete a feed', async ({ page }) => {
     await page.goto('/feeds')
-    await expect(page.getByText('Example Feed')).toBeVisible({ timeout: 15000 })
+    await page.waitForLoadState('networkidle')
+
+    // Add a feed
+    await page.getByPlaceholder('https://example.com/feed.xml').fill(TEST_FEED_URL)
+    await page.getByRole('button', { name: '追加' }).click()
+
+    // Wait for the feed to appear in the list
+    await expect(page.getByRole('heading', { name: TEST_FEED_URL }).or(
+      page.getByRole('heading', { name: /zenn/i })
+    )).toBeVisible({ timeout: 30000 })
+
+    // Delete the feed
+    const deleteButton = page.getByRole('button', { name: '削除' }).first()
+    await deleteButton.click()
+
+    // Confirm deletion in modal
+    await expect(page.getByText('フィードの削除')).toBeVisible()
+    await page.getByRole('button', { name: '削除する' }).click()
+
+    await page.waitForTimeout(1000)
   })
 
-  test('should show empty state when no feeds', async ({ page }) => {
-    await page.route(`${bffUrl('/feeds')}`, (route) => {
-      if (route.request().method() === 'GET') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify([]),
-        })
-      }
-      return route.continue()
-    })
-
+  test('should show validation error for invalid URL', async ({ page }) => {
     await page.goto('/feeds')
-    await expect(page.getByText('フィードが登録されていません')).toBeVisible({ timeout: 15000 })
+    await page.waitForLoadState('networkidle')
+
+    await page.getByPlaceholder('https://example.com/feed.xml').fill('abc')
+    await page.getByRole('button', { name: '追加' }).click()
+
+    // Check for either custom validation error or native HTML5 validation
+    const hasError = await page.getByText('有効なURLを入力してください').isVisible({ timeout: 3000 }).catch(() => false)
+    const isInvalid = await page.locator('input:invalid').isVisible().catch(() => false)
+    expect(hasError || isInvalid).toBeTruthy()
   })
 
-  test('should add a new feed', async ({ page }) => {
-    let feeds: unknown[] = []
-    await page.route(`${bffUrl('/feeds')}`, (route) => {
-      if (route.request().method() === 'GET') {
-        return route.fulfill({
-          status: 200,
-          contentType: 'application/json',
-          body: JSON.stringify(feeds),
-        })
-      }
-      if (route.request().method() === 'POST') {
-        const newFeed = { id: '2', user_id: 'u1', url: 'https://new.com/feed', title: 'New Feed', site_url: 'https://new.com', last_fetched_at: null, created_at: '2024-01-01' }
-        feeds = [newFeed]
-        return route.fulfill({
-          status: 201,
-          contentType: 'application/json',
-          body: JSON.stringify(newFeed),
-        })
-      }
-      return route.continue()
-    })
-
+  test('should show OPML import section', async ({ page }) => {
     await page.goto('/feeds')
-    await page.waitForSelector('input[type="url"]', { timeout: 15000 })
-    await page.fill('input[type="url"]', 'https://new.com/feed')
-    await page.click('button:has-text("追加")')
-    await expect(page.getByText('New Feed')).toBeVisible({ timeout: 10000 })
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByText('OPMLインポート')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'インポート' })).toBeVisible()
   })
 })

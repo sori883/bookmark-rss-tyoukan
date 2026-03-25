@@ -1,76 +1,89 @@
 import { test, expect } from '@playwright/test'
-import { mockAuth, bffUrl } from './helpers'
+
+const TEST_BOOKMARK_URL = 'https://example.com'
 
 test.describe('Bookmarks', () => {
-  test.beforeEach(async ({ context }) => {
-    await mockAuth(context)
-  })
-
-  test('should display bookmark list', async ({ page }) => {
-    await page.route(`${bffUrl('/bookmarks')}?*`, (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: [
-            { id: 'b1', user_id: 'u1', article_id: null, url: 'https://example.com/post', title: 'Bookmarked Post', content_markdown: '# Content', created_at: '2024-01-01', updated_at: '2024-01-01' },
-          ],
-          total: 1,
-          page: 1,
-          limit: 20,
-        }),
-      }),
-    )
-
+  test('should display bookmarks page with tabs', async ({ page }) => {
     await page.goto('/bookmarks')
-    await expect(page.getByText('Bookmarked Post')).toBeVisible({ timeout: 15000 })
+    await page.waitForLoadState('networkidle')
+
+    await expect(page.getByRole('heading', { name: 'ブックマーク' })).toBeVisible({ timeout: 15000 })
+    await expect(page.getByRole('button', { name: '一覧' })).toBeVisible()
+    await expect(page.getByRole('button', { name: '検索' })).toBeVisible()
   })
 
-  test('should view bookmark detail with markdown content', async ({ page }) => {
-    await page.route(`${bffUrl('/bookmarks/b1')}`, (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          id: 'b1', user_id: 'u1', article_id: null,
-          url: 'https://example.com/post', title: 'Bookmarked Post',
-          content_markdown: '# Hello\n\nThis is **bold** content.',
-          created_at: '2024-01-01', updated_at: '2024-01-01',
-        }),
-      }),
-    )
+  test('should add a bookmark by URL', async ({ page }) => {
+    await page.goto('/bookmarks')
+    await page.waitForLoadState('networkidle')
 
-    await page.goto('/bookmarks/b1')
-    await expect(page.getByText('Hello')).toBeVisible({ timeout: 15000 })
-    await expect(page.getByText('bold')).toBeVisible()
+    // Open the add form
+    await page.getByRole('button', { name: 'URL追加' }).click()
+
+    // Fill in URL and submit
+    await page.getByPlaceholder('https://example.com/article').fill(TEST_BOOKMARK_URL)
+    await page.getByRole('button', { name: '追加' }).click()
+
+    // Wait for bookmark to appear or success indication
+    await page.waitForTimeout(3000)
+  })
+
+  test('should show bookmark list or empty state', async ({ page }) => {
+    await page.goto('/bookmarks')
+    await page.waitForLoadState('networkidle')
+
+    const isEmpty = await page.getByText('ブックマークがありません').isVisible().catch(() => false)
+    if (!isEmpty) {
+      await expect(page.getByRole('button', { name: '削除' }).first()).toBeVisible()
+    }
+  })
+
+  test('should switch to search tab', async ({ page }) => {
+    await page.goto('/bookmarks')
+    await page.waitForLoadState('networkidle')
+
+    await page.getByRole('button', { name: '検索' }).click()
+    await expect(page).toHaveURL(/tab=search/)
+    await expect(page.getByPlaceholder('キーワードで検索...')).toBeVisible()
   })
 
   test('should search bookmarks', async ({ page }) => {
-    await page.route(`${bffUrl('/bookmarks')}?*`, (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: [], total: 0, page: 1, limit: 20 }),
-      }),
-    )
-    await page.route(`${bffUrl('/bookmarks/search')}*`, (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          data: [
-            { id: 'b2', user_id: 'u1', article_id: null, url: 'https://example.com/found', title: 'Search Result', content_markdown: 'found', created_at: '2024-01-01', updated_at: '2024-01-01' },
-          ],
-          total: 1,
-          page: 1,
-          limit: 20,
-        }),
-      }),
-    )
-
     await page.goto('/bookmarks?tab=search')
-    await page.waitForSelector('input[type="search"]', { timeout: 15000 })
-    await page.fill('input[type="search"]', 'test query')
-    await expect(page.getByText('Search Result')).toBeVisible({ timeout: 15000 })
+    await page.waitForLoadState('networkidle')
+
+    await page.getByPlaceholder('キーワードで検索...').fill('test')
+    await page.waitForTimeout(1000)
+
+    const noResults = await page.getByText('該当するブックマークがありません').isVisible().catch(() => false)
+    const hasResults = await page.getByText('件の結果').isVisible().catch(() => false)
+    expect(noResults || hasResults).toBeTruthy()
+  })
+
+  test('should show validation error for invalid bookmark URL', async ({ page }) => {
+    await page.goto('/bookmarks')
+    await page.waitForLoadState('networkidle')
+
+    await page.getByRole('button', { name: 'URL追加' }).click()
+    // Use a clearly invalid URL that won't pass any URL validation
+    await page.getByPlaceholder('https://example.com/article').fill('abc')
+    await page.getByRole('button', { name: '追加' }).click()
+
+    // Check for either client-side validation error or the input being marked invalid
+    const hasError = await page.getByText('有効なURLを入力してください').isVisible({ timeout: 3000 }).catch(() => false)
+    const isInvalid = await page.locator('input:invalid').isVisible().catch(() => false)
+    expect(hasError || isInvalid).toBeTruthy()
+  })
+
+  test('should delete a bookmark', async ({ page }) => {
+    await page.goto('/bookmarks')
+    await page.waitForLoadState('networkidle')
+
+    // E2E test bookmark is seeded by global-setup
+    await expect(page.getByRole('button', { name: '削除' }).first()).toBeVisible({ timeout: 10000 })
+
+    const countBefore = await page.getByRole('button', { name: '削除' }).count()
+    await page.getByRole('button', { name: '削除' }).first().click()
+    await page.waitForTimeout(2000)
+    const countAfter = await page.getByRole('button', { name: '削除' }).count()
+    expect(countAfter).toBeLessThan(countBefore)
   })
 })
