@@ -39,7 +39,13 @@ coverage/
 .nyc_output/
 htmlcov/
 .pytest_cache/
+playwright-report/
+test-results/
 
 # ─── ビルド・デプロイ ────────────────────────────────────
 cdk.out/
 .vercel/
+.output/
+
+# ─── TanStack Router（自動生成）─────────────────────────
+**/routeTree.gen.ts
