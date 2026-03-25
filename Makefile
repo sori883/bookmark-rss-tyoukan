@@ -2,7 +2,7 @@
        auth-dev feed-dev ai-dev notification-dev web-dev \
        auth-test feed-test ai-test notification-test web-test cli-test \
        migrate lint typecheck \
-       seed-test test-integration setup \
+       seed-test test-integration test-e2e setup \
        deploy deploy-diff destroy
 
 # ─── 環境変数の自動読み込み ──────────────────────────────
@@ -60,6 +60,8 @@ dev-bg: dev-stop db
 	@echo "Stop with: make dev-stop"
 
 # ─── 全サービス停止 ───────────────────────────────────────
+SERVICE_PORTS := 3000 3001 3003 3004 5173
+
 dev-stop:
 	@if [ -d $(PID_DIR) ]; then \
 		for f in $(PID_DIR)/*.pid; do \
@@ -74,6 +76,13 @@ dev-stop:
 	@pkill -f "tsx watch" 2>/dev/null || true
 	@pkill -f "uvicorn src.main:app" 2>/dev/null || true
 	@pkill -f "vinxi" 2>/dev/null || true
+	@for port in $(SERVICE_PORTS); do \
+		pids=$$(lsof -ti :$$port 2>/dev/null); \
+		if [ -n "$$pids" ]; then \
+			echo "Killing remaining processes on port $$port: $$pids"; \
+			echo "$$pids" | xargs kill 2>/dev/null || true; \
+		fi; \
+	done
 	@echo "All services stopped."
 
 build:
@@ -145,6 +154,10 @@ cli-test:
 # ─── DB マイグレーション ────────────────────────────────
 migrate:
 	cd packages/db && pnpm generate && pnpm migrate
+
+# ─── E2E テスト (全サービス起動中に実行) ────────────────────
+test-e2e:
+	cd apps/web && pnpm test:e2e
 
 # ─── 結合テスト ──────────────────────────────────────────
 seed-test:

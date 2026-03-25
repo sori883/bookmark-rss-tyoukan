@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../lib/db.js'
-import { authMiddleware, getUserId } from '../middleware/auth.js'
+import { authMiddleware, getUserId, isServiceToken } from '../middleware/auth.js'
 import type { AuthVariables } from '../middleware/auth.js'
 import * as articleService from '../services/article-service.js'
 
@@ -79,7 +79,12 @@ app.get(
   ),
   async (c) => {
     const query = c.req.valid('query')
-    const userId = getUserId(c.get('jwtPayload'))
+    const payload = c.get('jwtPayload')
+    // サービスJWT: user_id クエリパラメータで対象ユーザー指定
+    // ユーザーJWT: 自身のユーザーID
+    const userId = isServiceToken(payload)
+      ? c.req.query('user_id')
+      : getUserId(payload)
 
     const result = await articleService.listArticles(db, {
       userId,

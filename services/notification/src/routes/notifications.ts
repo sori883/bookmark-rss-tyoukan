@@ -14,7 +14,7 @@ import {
 type Env = { Variables: { jwtPayload: JwtPayload } }
 
 const notifyRequestSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: z.string().min(1),
   message: z.string().min(1),
 })
 
@@ -31,7 +31,7 @@ const updateRequestSchema = z.object({
   is_read: z.boolean(),
 })
 
-const uuidParamSchema = z.string().uuid()
+const idParamSchema = z.string().min(1)
 
 function formatNotification(row: {
   id: string
@@ -103,7 +103,7 @@ export function createNotificationRoutes(db: AppDb, logger: pino.Logger) {
       const jwt = c.get('jwtPayload')
       const id = c.req.param('id')
 
-      const parseResult = uuidParamSchema.safeParse(id)
+      const parseResult = idParamSchema.safeParse(id)
       if (!parseResult.success) {
         throw new ValidationError('Invalid notification ID format')
       }

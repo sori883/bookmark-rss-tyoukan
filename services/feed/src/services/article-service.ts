@@ -12,7 +12,7 @@ export interface CreateArticleInput {
 }
 
 export interface ListArticlesQuery {
-  readonly userId: string
+  readonly userId?: string
   readonly feedId?: string
   readonly isRead?: boolean
   readonly page: number
@@ -35,8 +35,11 @@ export async function createArticle(db: AppDb, input: CreateArticleInput) {
 }
 
 export async function listArticles(db: AppDb, query: ListArticlesQuery) {
-  const conditions = [eq(articles.userId, query.userId)]
+  const conditions = []
 
+  if (query.userId) {
+    conditions.push(eq(articles.userId, query.userId))
+  }
   if (query.feedId) {
     conditions.push(eq(articles.feedId, query.feedId))
   }
@@ -44,7 +47,7 @@ export async function listArticles(db: AppDb, query: ListArticlesQuery) {
     conditions.push(eq(articles.isRead, query.isRead))
   }
 
-  const where = and(...conditions)
+  const where = conditions.length > 0 ? and(...conditions) : undefined
 
   const [data, [{ total }]] = await Promise.all([
     db

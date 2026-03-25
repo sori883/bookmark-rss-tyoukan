@@ -4,12 +4,40 @@ import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { settings } from '@bookmark-rss/db'
 import { db } from '../lib/db.js'
-import { authMiddleware, getUserId } from '../middleware/auth.js'
+import { authMiddleware, getUserId, isServiceToken } from '../middleware/auth.js'
 import type { AuthVariables } from '../middleware/auth.js'
+import { isNotNull } from 'drizzle-orm'
 
 const app = new Hono<{ Variables: AuthVariables }>()
 
 app.use(authMiddleware)
+
+// GET /settings/notification-targets — サービスJWT専用: Webhook設定済みユーザー一覧
+app.get('/notification-targets', async (c) => {
+  const payload = c.get('jwtPayload')
+  if (!isServiceToken(payload)) {
+    return c.json({ error: { code: 'FORBIDDEN', message: 'Service token required' } }, 403)
+  }
+
+  const rows = await db
+    .select({
+      userId: settings.userId,
+      webhookUrl: settings.webhookUrl,
+      webhookType: settings.webhookType,
+    })
+    .from(settings)
+    .where(isNotNull(settings.webhookUrl))
+
+  return c.json({
+    data: rows
+      .filter((r) => r.webhookUrl)
+      .map((r) => ({
+        user_id: r.userId,
+        webhook_url: r.webhookUrl,
+        webhook_type: r.webhookType,
+      })),
+  })
+})
 
 // GET /settings
 app.get('/', async (c) => {

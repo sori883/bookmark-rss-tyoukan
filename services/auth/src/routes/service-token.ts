@@ -47,8 +47,12 @@ export function createServiceTokenRoute(db: AppDb, logger: pino.Logger) {
         )
       }
 
+      // Detect algorithm from the public key
+      const publicKeyJwk = JSON.parse(privateKeyRow.publicKey) as { alg?: string }
+      const alg = publicKeyJwk.alg ?? 'EdDSA'
+
       const privateKeyJwk = JSON.parse(privateKeyRow.privateKey) as JsonWebKey
-      const privateKey = await importJWK(privateKeyJwk, 'RS256')
+      const privateKey = await importJWK(privateKeyJwk, alg)
 
       const token = await new SignJWT({
         type: 'service',
@@ -56,7 +60,7 @@ export function createServiceTokenRoute(db: AppDb, logger: pino.Logger) {
         client_id: account.clientId,
       })
         .setProtectedHeader({
-          alg: 'RS256',
+          alg,
           kid: privateKeyRow.id,
         })
         .setIssuer(ISSUER)

@@ -1,8 +1,12 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { useEffect } from 'react'
+import { createFileRoute, redirect, useNavigate } from '@tanstack/react-router'
 import { getSession, startGoogleOAuth } from '~/lib/auth'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async () => {
+    if (typeof window === 'undefined') {
+      return
+    }
     const session = await getSession()
     if (session) {
       throw redirect({ to: '/articles', search: { page: 1 } })
@@ -12,6 +16,16 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginPage() {
+  const navigate = useNavigate()
+
+  useEffect(() => {
+    getSession().then((session) => {
+      if (session) {
+        navigate({ to: '/articles', search: { page: 1 } })
+      }
+    }).catch(() => {})
+  }, [navigate])
+
   const handleLogin = () => {
     startGoogleOAuth(window.location.origin + '/')
   }

@@ -1,6 +1,5 @@
 import type { AuthUser } from '~/types/api'
 import { signOut } from '~/lib/auth'
-import { useNavigate } from '@tanstack/react-router'
 
 type HeaderProps = {
   readonly user: AuthUser
@@ -8,11 +7,10 @@ type HeaderProps = {
 }
 
 export function Header({ user, onMenuToggle }: HeaderProps) {
-  const navigate = useNavigate()
-
-  const handleLogout = async () => {
-    await signOut()
-    navigate({ to: '/login' })
+  const handleLogout = () => {
+    signOut().finally(() => {
+      window.location.href = '/login'
+    })
   }
 
   return (

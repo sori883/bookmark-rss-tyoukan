@@ -1,5 +1,4 @@
 import asyncio
-from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 import structlog
@@ -25,32 +24,50 @@ async def run_digest(request: Request, body: DigestRequest) -> DigestResponse:
     since = body.since or _default_since()
     logger.info("digest_started", since=since.isoformat())
 
-    articles = await feed_client.get_unread_articles()
-    articles = _filter_by_since(articles, since)
-
-    if not articles:
-        logger.info("digest_no_articles")
+    # 通知設定済みユーザー一覧を取得
+    targets = await feed_client.get_notification_targets()
+    if not targets:
+        logger.info("digest_no_notification_targets")
         return DigestResponse(selected_count=0, notified=False, articles=[])
 
-    selected = await asyncio.to_thread(select_articles, articles)
-    digest_articles = await asyncio.to_thread(summarize_articles, selected)
+    all_digest_articles: list[DigestArticle] = []
+    notified = True
 
-    notified = await _notify_users(
-        articles=selected,
-        digest_articles=digest_articles,
-        notification_client=notification_client,
-    )
+    for target in targets:
+        user_id = target.user_id
+        logger.info("digest_processing_user", user_id=user_id)
+
+        # ユーザーの未読記事を取得
+        articles = await feed_client.get_unread_articles_for_user(user_id)
+        articles = _filter_by_since(articles, since)
+
+        if not articles:
+            logger.info("digest_no_articles_for_user", user_id=user_id)
+            continue
+
+        # 記事選定・要約
+        selected = await asyncio.to_thread(select_articles, articles)
+        digest_articles = await asyncio.to_thread(summarize_articles, selected)
+        all_digest_articles = [*all_digest_articles, *digest_articles]
+
+        # 通知送信
+        message = _build_digest_message(digest_articles)
+        try:
+            await notification_client.send_digest(user_id=user_id, message=message)
+        except NotificationServiceError:
+            logger.error("notification_failed_for_user", user_id=user_id)
+            notified = False
 
     logger.info(
         "digest_completed",
-        selected_count=len(digest_articles),
+        selected_count=len(all_digest_articles),
         notified=notified,
     )
 
     return DigestResponse(
-        selected_count=len(digest_articles),
+        selected_count=len(all_digest_articles),
         notified=notified,
-        articles=digest_articles,
+        articles=all_digest_articles,
     )
 
 
@@ -71,31 +88,3 @@ def _build_digest_message(digest_articles: list[DigestArticle]) -> str:
         lines.append(f"{article.summary}")
         lines.append(f"[記事を読む]({article.url})\n")
     return "\n".join(lines)
-
-
-def _group_articles_by_user(
-    articles: list[ArticleResponse],
-) -> dict[str, list[ArticleResponse]]:
-    grouped: dict[str, list[ArticleResponse]] = defaultdict(list)
-    for article in articles:
-        grouped[article.user_id].append(article)
-    return dict(grouped)
-
-
-async def _notify_users(
-    articles: list[ArticleResponse],
-    digest_articles: list[DigestArticle],
-    notification_client: NotificationClient,
-) -> bool:
-    user_groups = _group_articles_by_user(articles)
-    message = _build_digest_message(digest_articles)
-    all_sent = True
-
-    for user_id in user_groups:
-        try:
-            await notification_client.send_digest(user_id=user_id, message=message)
-        except NotificationServiceError:
-            logger.error("notification_failed_for_user", user_id=user_id)
-            all_sent = False
-
-    return all_sent

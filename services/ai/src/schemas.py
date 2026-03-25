@@ -61,3 +61,13 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class NotificationTarget(BaseModel):
+    user_id: str
+    webhook_url: str
+    webhook_type: str | None = None
+
+
+class NotificationTargetsResponse(BaseModel):
+    data: list[NotificationTarget]

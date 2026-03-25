@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import { cors } from 'hono/cors'
 import { logger } from './lib/logger.js'
 import { errorResponse } from './lib/errors.js'
 import feedsRoute from './routes/feeds.js'
@@ -9,6 +10,16 @@ import settingsRoute from './routes/settings.js'
 
 export function buildApp() {
   const app = new Hono()
+
+  app.use(
+    '*',
+    cors({
+      origin: process.env.WEB_ORIGIN ?? 'http://localhost:5173',
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowHeaders: ['Content-Type', 'Authorization'],
+      credentials: true,
+    }),
+  )
 
   app.get('/health', (c) => c.json({ status: 'ok' }))
 

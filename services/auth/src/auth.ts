@@ -17,7 +17,13 @@ export function createAuth(options: {
   return betterAuth({
     database: drizzleAdapter(options.db, {
       provider: 'pg',
-      schema,
+      schema: {
+        user: schema.users,
+        session: schema.sessions,
+        account: schema.accounts,
+        verification: schema.verifications,
+        jwks: schema.jwks,
+      },
     }),
     basePath: '/auth',
     secret: options.secret,
@@ -30,7 +36,11 @@ export function createAuth(options: {
       },
     },
     plugins: [
-      jwt(),
+      jwt({
+        jwks: {
+          disablePrivateKeyEncryption: true,
+        },
+      }),
       bearer(),
     ],
   })

@@ -41,6 +41,10 @@ export const authMiddleware = createMiddleware<{
   }
 })
 
+export function isServiceToken(jwtPayload: JwtPayload): boolean {
+  return jwtPayload.type === 'service'
+}
+
 export function getUserId(jwtPayload: JwtPayload): string {
   return jwtPayload.sub
 }
