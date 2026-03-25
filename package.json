@@ -1,5 +1,12 @@
 {
   "name": "bookmark-rss-tyoukan",
   "private": true,
-  "packageManager": "pnpm@10.32.1"
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "seed-test": "tsx scripts/seed-test-data.ts"
+  },
+  "devDependencies": {
+    "dotenv": "^16.0.0",
+    "tsx": "^4.19.0"
+  }
 }

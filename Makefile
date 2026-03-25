@@ -1,7 +1,8 @@
 .PHONY: db db-stop dev build test clean \
        auth-dev bff-dev feed-dev ai-dev notification-dev web-dev \
        auth-test bff-test feed-test ai-test notification-test web-test cli-test \
-       migrate lint typecheck
+       migrate lint typecheck \
+       seed-test test-integration
 
 # ─── DB ────────────────────────────────────────────────
 db:
@@ -97,6 +98,13 @@ cli-test:
 # ─── DB マイグレーション ────────────────────────────────
 migrate:
 	cd packages/db && pnpm generate && pnpm migrate
+
+# ─── 結合テスト ──────────────────────────────────────────
+seed-test:
+	cd scripts && npx tsx seed-test-data.ts
+
+test-integration: db
+	cd tests/integration && pnpm test
 
 # ─── クリーンアップ ─────────────────────────────────────
 clean:

@@ -4,6 +4,7 @@
 # 環境変数
 .env
 .env.local
+.env.test
 .env.*.local
 
 # reference（セットアップ後は不要）

@@ -2,3 +2,4 @@ packages:
   - "services/*"
   - "packages/*"
   - "apps/*"
+  - "tests/integration"

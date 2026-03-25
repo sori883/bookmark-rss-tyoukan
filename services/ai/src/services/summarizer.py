@@ -2,11 +2,10 @@ import structlog
 from pydantic import BaseModel
 from strands import Agent
 
+from src.config import get_settings
 from src.schemas import ArticleResponse, DigestArticle
 
 logger = structlog.get_logger(__name__)
-
-BEDROCK_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 SUMMARY_SYSTEM_PROMPT = """あなたは技術記事の要約者です。
 与えられた記事のタイトルとURLから、各記事の簡潔な要約（2〜3文）を日本語で生成してください。
@@ -29,10 +28,13 @@ class SummarizedArticles(BaseModel):
 
 def summarize_articles(
     articles: list[ArticleResponse],
-    model_id: str = BEDROCK_MODEL_ID,
+    model_id: str | None = None,
 ) -> list[DigestArticle]:
     if not articles:
         return []
+
+    if model_id is None:
+        model_id = get_settings().bedrock_model_id
 
     article_list = "\n".join(
         f"- タイトル: {article.title}\n  URL: {article.url}" for article in articles

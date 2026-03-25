@@ -1,0 +1,20 @@
+{
+  "name": "@bookmark-rss/integration-tests",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "vitest": "^3.0.0",
+    "typescript": "^5.7.0",
+    "dotenv": "^16.0.0",
+    "jose": "^6.0.0",
+    "postgres": "^3.4.0",
+    "drizzle-orm": "^0.41.0",
+    "bcryptjs": "^2.4.3",
+    "@types/bcryptjs": "^2.4.0",
+    "@types/node": "^22.0.0"
+  }
+}

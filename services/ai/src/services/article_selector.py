@@ -2,11 +2,10 @@ import structlog
 from pydantic import BaseModel
 from strands import Agent
 
+from src.config import get_settings
 from src.schemas import ArticleResponse
 
 logger = structlog.get_logger(__name__)
-
-BEDROCK_MODEL_ID = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
 
 SELECTION_SYSTEM_PROMPT = """あなたは技術記事キュレーターです。
 与えられた記事リストから、技術的に興味深い・話題性のある注目記事を選定してください。
@@ -30,10 +29,13 @@ class SelectedArticles(BaseModel):
 
 def select_articles(
     articles: list[ArticleResponse],
-    model_id: str = BEDROCK_MODEL_ID,
+    model_id: str | None = None,
 ) -> list[ArticleResponse]:
     if not articles:
         return []
+
+    if model_id is None:
+        model_id = get_settings().bedrock_model_id
 
     if len(articles) <= MIN_ARTICLES_FOR_SELECTION:
         logger.info("skipping_selection", reason="too_few_articles", count=len(articles))

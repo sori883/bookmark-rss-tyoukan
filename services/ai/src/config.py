@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     ai_client_id: str
     ai_client_secret: str
     aws_region: str = "us-east-1"
+    bedrock_model_id: str = "anthropic.claude-haiku-4-5-20251001-v1:0"
 
     log_level: str = "info"
     max_articles_per_request: int = 100
