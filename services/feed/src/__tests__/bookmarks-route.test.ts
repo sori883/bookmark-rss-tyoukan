@@ -9,6 +9,7 @@ vi.mock('../middleware/auth.js', () => {
       await next()
     }),
     getUserId: (payload: { sub: string }) => payload.sub,
+    isServiceToken: () => false,
   }
 })
 

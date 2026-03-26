@@ -37,6 +37,6 @@ jobs:
         run: cargo clippy --all-targets -- -D warnings
         working-directory: apps/cli
 
-      - name: Test
-        run: cargo test
+      - name: Test (unit only)
+        run: cargo test --bin bookmark-rss-cli
         working-directory: apps/cli

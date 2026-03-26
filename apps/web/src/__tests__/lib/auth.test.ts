@@ -50,7 +50,10 @@ describe('auth', () => {
   describe('fetchJwt', () => {
     it('should fetch and cache JWT', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify({ token: 'jwt-token-123', expires_in: 3600 }), { status: 200 }),
+        new Response(JSON.stringify({}), {
+          status: 200,
+          headers: { 'set-auth-jwt': 'jwt-token-123' },
+        }),
       )
 
       const token = await fetchJwt()
@@ -64,10 +67,16 @@ describe('auth', () => {
     it('should force refresh when requested', async () => {
       vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({ token: 'old-token', expires_in: 3600 }), { status: 200 }),
+          new Response(JSON.stringify({}), {
+            status: 200,
+            headers: { 'set-auth-jwt': 'old-token' },
+          }),
         )
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({ token: 'new-token', expires_in: 3600 }), { status: 200 }),
+          new Response(JSON.stringify({}), {
+            status: 200,
+            headers: { 'set-auth-jwt': 'new-token' },
+          }),
         )
 
       await fetchJwt()
@@ -85,12 +94,12 @@ describe('auth', () => {
       await expect(fetchJwt()).rejects.toThrow('Failed to fetch JWT')
     })
 
-    it('should throw on invalid token response', async () => {
+    it('should throw when set-auth-jwt header is missing', async () => {
       vi.spyOn(globalThis, 'fetch').mockResolvedValueOnce(
-        new Response(JSON.stringify({ invalid: true }), { status: 200 }),
+        new Response(JSON.stringify({}), { status: 200 }),
       )
 
-      await expect(fetchJwt()).rejects.toThrow('Invalid token response')
+      await expect(fetchJwt()).rejects.toThrow('Failed to fetch JWT')
     })
   })
 
@@ -98,7 +107,10 @@ describe('auth', () => {
     it('should clear cache and call sign-out endpoint', async () => {
       const fetchSpy = vi.spyOn(globalThis, 'fetch')
         .mockResolvedValueOnce(
-          new Response(JSON.stringify({ token: 'jwt' }), { status: 200 }),
+          new Response(JSON.stringify({}), {
+            status: 200,
+            headers: { 'set-auth-jwt': 'jwt' },
+          }),
         )
         .mockResolvedValueOnce(
           new Response(null, { status: 200 }),

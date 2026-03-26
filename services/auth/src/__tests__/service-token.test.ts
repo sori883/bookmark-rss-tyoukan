@@ -18,8 +18,8 @@ beforeAll(async () => {
   const { privateKey, publicKey } = await generateKeyPair('RS256', {
     extractable: true,
   })
-  privateKeyJwk = await exportJWK(privateKey)
-  publicKeyJwk = await exportJWK(publicKey)
+  privateKeyJwk = { ...(await exportJWK(privateKey)), alg: 'RS256' }
+  publicKeyJwk = { ...(await exportJWK(publicKey)), alg: 'RS256' }
 })
 
 type MockDb = Parameters<typeof createServiceTokenRoute>[0]

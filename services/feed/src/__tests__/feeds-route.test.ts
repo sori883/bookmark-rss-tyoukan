@@ -21,12 +21,14 @@ const mockListFeeds = vi.fn()
 const mockDeleteFeed = vi.fn()
 const mockImportOpml = vi.fn()
 const mockGetFeedById = vi.fn()
+const mockGetFeedsByIds = vi.fn()
 vi.mock('../services/feed-service.js', () => ({
   createFeed: (...args: unknown[]) => mockCreateFeed(...args),
   listFeeds: (...args: unknown[]) => mockListFeeds(...args),
   deleteFeed: (...args: unknown[]) => mockDeleteFeed(...args),
   importOpml: (...args: unknown[]) => mockImportOpml(...args),
   getFeedById: (...args: unknown[]) => mockGetFeedById(...args),
+  getFeedsByIds: (...args: unknown[]) => mockGetFeedsByIds(...args),
 }))
 
 const mockFetchFeeds = vi.fn()
@@ -37,6 +39,11 @@ vi.mock('../services/rss-fetcher.js', () => ({
 const mockParseOpml = vi.fn()
 vi.mock('../lib/opml-parser.js', () => ({
   parseOpml: (...args: unknown[]) => mockParseOpml(...args),
+}))
+
+const mockDiscoverFeedUrl = vi.fn()
+vi.mock('../lib/rss-discovery.js', () => ({
+  discoverFeedUrl: (...args: unknown[]) => mockDiscoverFeedUrl(...args),
 }))
 
 import { Hono } from 'hono'
@@ -65,6 +72,7 @@ describe('POST /feeds', () => {
       lastFetchedAt: null,
       createdAt: NOW,
     }
+    mockDiscoverFeedUrl.mockResolvedValue('https://example.com/rss')
     mockCreateFeed.mockResolvedValue(feedData)
     mockFetchFeeds.mockResolvedValue({ fetchedCount: 1, newArticlesCount: 3 })
     mockGetFeedById.mockResolvedValue(feedData)
@@ -204,6 +212,15 @@ describe('POST /feeds/import-opml', () => {
   beforeEach(() => vi.clearAllMocks())
 
   it('should import feeds from OPML file', async () => {
+    const feedData = {
+      id: 'feed-1',
+      userId: 'user-1',
+      url: 'https://example.com/rss',
+      title: 'Example Feed',
+      siteUrl: 'https://example.com',
+      lastFetchedAt: null,
+      createdAt: NOW,
+    }
     mockParseOpml.mockReturnValue([
       {
         url: 'https://example.com/rss',
@@ -211,17 +228,9 @@ describe('POST /feeds/import-opml', () => {
         siteUrl: 'https://example.com',
       },
     ])
-    mockImportOpml.mockResolvedValue([
-      {
-        id: 'feed-1',
-        userId: 'user-1',
-        url: 'https://example.com/rss',
-        title: 'Example Feed',
-        siteUrl: 'https://example.com',
-        lastFetchedAt: null,
-        createdAt: NOW,
-      },
-    ])
+    mockImportOpml.mockResolvedValue([feedData])
+    mockFetchFeeds.mockResolvedValue({ fetchedCount: 1, newArticlesCount: 0 })
+    mockGetFeedsByIds.mockResolvedValue([feedData])
 
     const opml = '<opml><body><outline xmlUrl="https://example.com/rss" /></body></opml>'
 

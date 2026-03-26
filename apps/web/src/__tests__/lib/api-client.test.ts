@@ -27,7 +27,7 @@ describe('apiClient', () => {
       const result = await apiClient.getFeeds()
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        'http://localhost:3010/feeds',
+        'http://localhost:3001/feeds',
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: 'Bearer test-jwt-token',
@@ -48,7 +48,7 @@ describe('apiClient', () => {
       await apiClient.createFeed({ url: 'https://example.com/feed' })
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        'http://localhost:3010/feeds',
+        'http://localhost:3001/feeds',
         expect.objectContaining({
           method: 'POST',
           body: JSON.stringify({ url: 'https://example.com/feed' }),
@@ -66,7 +66,7 @@ describe('apiClient', () => {
       await apiClient.deleteFeed('feed-id')
 
       expect(globalThis.fetch).toHaveBeenCalledWith(
-        'http://localhost:3010/feeds/feed-id',
+        'http://localhost:3001/feeds/feed-id',
         expect.objectContaining({ method: 'DELETE' }),
       )
     })
