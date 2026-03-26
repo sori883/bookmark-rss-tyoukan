@@ -15,6 +15,20 @@
       "when": 1774448864238,
       "tag": "0001_pretty_paibok",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1774459984033,
+      "tag": "0002_cynical_professor_monster",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1774489380557,
+      "tag": "0003_pretty_cable",
+      "breakpoints": true
     }
   ]
 }

@@ -15,7 +15,38 @@ export interface FetchResult {
 interface ParsedArticle {
   readonly url: string
   readonly title: string
+  readonly description: string
+  readonly ogImageUrl: string | null
   readonly publishedAt: Date | null
+}
+
+function extractImageUrl(
+  item: RssParser.Item & Record<string, unknown>,
+): string | null {
+  // enclosure（image type）
+  const enclosure = item.enclosure as
+    | { url?: string; type?: string }
+    | undefined
+  if (enclosure?.url && enclosure.type?.startsWith('image/')) {
+    return enclosure.url
+  }
+
+  // media:content or media:thumbnail（RSS 2.0 / Atom）
+  const mediaContent = item['media:content'] as
+    | { $?: { url?: string } }
+    | undefined
+  if (mediaContent?.$?.url) {
+    return mediaContent.$.url
+  }
+
+  const mediaThumbnail = item['media:thumbnail'] as
+    | { $?: { url?: string } }
+    | undefined
+  if (mediaThumbnail?.$?.url) {
+    return mediaThumbnail.$.url
+  }
+
+  return null
 }
 
 function parseArticles(
@@ -26,7 +57,9 @@ function parseArticles(
     .map((item) => ({
       url: item.link!,
       title: item.title ?? 'Untitled',
-      publishedAt: item.pubDate ? new Date(item.pubDate) : null,
+      description: item.contentSnippet ?? item.content ?? '',
+      ogImageUrl: extractImageUrl(item as RssParser.Item & Record<string, unknown>),
+      publishedAt: item.pubDate ? new Date(item.pubDate) : new Date(),
     }))
 }
 
@@ -63,6 +96,8 @@ async function fetchSingleFeed(
         feedId: feedRecord.id,
         url: a.url,
         title: a.title,
+        description: a.description,
+        ogImageUrl: a.ogImageUrl,
         publishedAt: a.publishedAt,
       })),
     )

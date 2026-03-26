@@ -21,11 +21,18 @@ class NotificationClient:
         self._base_url = base_url
         self._token_manager = token_manager
 
-    async def send_digest(self, user_id: str, message: str) -> NotifyResponse:
+    async def send_digest(
+        self,
+        user_id: str,
+        message: str,
+        webhook_message: str | None = None,
+    ) -> NotifyResponse:
         token = await self._token_manager.get_token()
         headers = {"Authorization": f"Bearer {token}"}
         url = f"{self._base_url}/notify"
-        payload = {"user_id": user_id, "message": message}
+        payload: dict[str, str] = {"user_id": user_id, "message": message}
+        if webhook_message is not None:
+            payload["webhook_message"] = webhook_message
 
         try:
             response = await self._http_client.post(

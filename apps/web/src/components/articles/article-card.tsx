@@ -1,4 +1,4 @@
-import { BookmarkPlus } from 'lucide-react'
+import { BookmarkPlus, BookmarkCheck } from 'lucide-react'
 import type { ArticleResponse } from '~/types/api'
 import { useCreateBookmark } from '~/hooks/use-bookmarks'
 import { useMarkArticleRead } from '~/hooks/use-articles'
@@ -51,16 +51,28 @@ export function ArticleCard({ article, feedTitle }: ArticleCardProps) {
             )}
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={handleBookmark}
-          loading={createBookmark.isPending}
-          aria-label="ブックマークに追加"
-          title="ブックマークに追加"
-        >
-          <BookmarkPlus size={18} />
-        </Button>
+        {article.is_bookmarked ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled
+            aria-label="ブックマーク済み"
+            title="ブックマーク済み"
+          >
+            <BookmarkCheck size={18} className="text-primary" />
+          </Button>
+        ) : (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleBookmark}
+            loading={createBookmark.isPending}
+            aria-label="ブックマークに追加"
+            title="ブックマークに追加"
+          >
+            <BookmarkPlus size={18} />
+          </Button>
+        )}
       </div>
     </div>
   )

@@ -37,7 +37,7 @@ def summarize_articles(
         model_id = get_settings().bedrock_model_id
 
     article_list = "\n".join(
-        f"- タイトル: {article.title}\n  URL: {article.url}" for article in articles
+        _format_article_for_prompt(article) for article in articles
     )
     prompt = f"以下の記事を要約してください。\n\n{article_list}"
 
@@ -71,8 +71,14 @@ def _parse_summary_result(
         if structured is None:
             return []
 
+        url_to_image = {a.url: a.og_image_url for a in articles}
         return [
-            DigestArticle(url=s.url, title=s.title, summary=s.summary)
+            DigestArticle(
+                url=s.url,
+                title=s.title,
+                summary=s.summary,
+                og_image_url=url_to_image.get(s.url),
+            )
             for s in structured.articles
         ]
     except Exception as e:
@@ -80,10 +86,26 @@ def _parse_summary_result(
         return []
 
 
+MAX_DESCRIPTION_LENGTH = 300
+
+
+def _format_article_for_prompt(article: ArticleResponse) -> str:
+    lines = [f"- タイトル: {article.title}", f"  URL: {article.url}"]
+    if article.description:
+        desc = article.description[:MAX_DESCRIPTION_LENGTH]
+        lines.append(f"  概要: {desc}")
+    return "\n".join(lines)
+
+
 def _fallback_summarize(articles: list[ArticleResponse]) -> list[DigestArticle]:
     """要約失敗時のフォールバック: タイトルのみで DigestArticle を作成。"""
     logger.info("using_fallback_summarize")
     return [
-        DigestArticle(url=a.url, title=a.title, summary=a.title)
+        DigestArticle(
+            url=a.url,
+            title=a.title,
+            summary=a.title,
+            og_image_url=a.og_image_url,
+        )
         for a in articles
     ]

@@ -174,6 +174,22 @@ export const apiClient = {
     )
   },
 
+  markArticleReadByUrl(url: string): Promise<{ success: boolean }> {
+    return request<{ success: boolean }>('/articles/mark-read-by-url', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    })
+  },
+
+  bulkReadArticles(articleIds: readonly string[]): Promise<{ updated_count: number }> {
+    return request<{ updated_count: number }>('/articles/bulk-read', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ article_ids: articleIds }),
+    })
+  },
+
   getNotifications(
     params: PaginationParams = {},
   ): Promise<PaginatedResponse<NotificationResponse>> {

@@ -6,12 +6,14 @@ from pydantic import BaseModel
 class DigestRequest(BaseModel):
     since: datetime | None = None
     skip_hour_filter: bool = False
+    user_id: str | None = None
 
 
 class DigestArticle(BaseModel):
     url: str
     title: str
     summary: str
+    og_image_url: str | None = None
 
 
 class DigestResponse(BaseModel):
@@ -26,6 +28,8 @@ class ArticleResponse(BaseModel):
     feed_id: str
     url: str
     title: str
+    description: str = ""
+    og_image_url: str | None = None
     is_read: bool
     published_at: datetime | None = None
     created_at: datetime
@@ -62,6 +66,24 @@ class ErrorDetail(BaseModel):
 
 class ErrorResponse(BaseModel):
     error: ErrorDetail
+
+
+class BookmarkResponse(BaseModel):
+    id: str
+    user_id: str
+    article_id: str | None = None
+    url: str
+    title: str
+    content_markdown: str
+    created_at: datetime
+    updated_at: datetime
+
+
+class PaginatedBookmarksResponse(BaseModel):
+    data: list[BookmarkResponse]
+    total: int
+    page: int
+    limit: int
 
 
 class NotificationTarget(BaseModel):

@@ -37,7 +37,9 @@ export type ArticleResponse = {
   readonly feed_id: string
   readonly url: string
   readonly title: string
+  readonly description: string
   readonly is_read: boolean
+  readonly is_bookmarked: boolean
   readonly published_at: string
   readonly created_at: string
   readonly updated_at: string

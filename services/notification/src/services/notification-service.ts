@@ -8,6 +8,7 @@ import { NotFoundError } from '../lib/errors'
 export interface CreateNotificationInput {
   readonly userId: string
   readonly message: string
+  readonly webhookMessage?: string
 }
 
 export interface CreateNotificationResult {
@@ -51,7 +52,8 @@ export async function createNotification(
     })
     .returning({ id: notifications.id })
 
-  const webhookResult = await sendWebhook(db, input.userId, input.message, logger)
+  const webhookText = input.webhookMessage ?? input.message
+  const webhookResult = await sendWebhook(db, input.userId, webhookText, logger)
 
   return {
     id: row.id,

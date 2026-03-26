@@ -16,6 +16,7 @@ type Env = { Variables: { jwtPayload: JwtPayload } }
 const notifyRequestSchema = z.object({
   user_id: z.string().min(1),
   message: z.string().min(1),
+  webhook_message: z.string().min(1).optional(),
 })
 
 const listQuerySchema = z.object({
@@ -61,11 +62,11 @@ export function createNotificationRoutes(db: AppDb, logger: pino.Logger) {
       throw new UnauthorizedError('Service token required')
     }
 
-    const { user_id, message } = c.req.valid('json')
+    const { user_id, message, webhook_message } = c.req.valid('json')
 
     const result = await createNotification(
       db,
-      { userId: user_id, message },
+      { userId: user_id, message, webhookMessage: webhook_message },
       logger,
     )
 

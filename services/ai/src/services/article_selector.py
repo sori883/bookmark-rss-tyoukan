@@ -1,3 +1,4 @@
+import random
 from datetime import UTC, datetime
 
 import structlog
@@ -5,50 +6,83 @@ from pydantic import BaseModel
 from strands import Agent
 
 from src.config import get_settings
-from src.schemas import ArticleResponse
+from src.schemas import ArticleResponse, BookmarkResponse
 
 logger = structlog.get_logger(__name__)
 
-SELECTION_SYSTEM_PROMPT = """あなたは技術記事キュレーターです。
-与えられた記事リストから、技術的に興味深い・話題性のある注目記事を選定してください。
+SELECTION_SYSTEM_PROMPT = (
+    "あなたは記事キュレーターです。"
+    "番号付きの記事リストから、ユーザーにおすすめの記事を8件選定してください。\n\n"
+    "## 選定ルール（8件厳守）\n"
+    "- ユーザーのブックマーク傾向と同じジャンル・分野の記事を選定。\n"
+    "- ブックマーク傾向と無関係なジャンルの記事は選定しないこと。\n"
+    "- 必ず8件ちょうど選定すること。8件を超えてはいけない。\n\n"
+    "ブックマーク傾向が提供されていない場合は、"
+    "話題性の高い記事を8件選定してください。\n"
+    "記事が8件以下の場合は全件選定してください。\n\n"
+    "選定結果は記事の番号で返してください。"
+)
 
-選定基準:
-- 新しい技術トレンドや重要なアップデート
-- セキュリティに関する重要な情報
-- 開発者コミュニティで話題になりそうな内容
-- 実用的で学びのある技術記事
-
-最大5件を選定してください。記事が5件以下の場合は全件選定してください。"""
-
-MIN_ARTICLES_FOR_SELECTION = 5
+MAX_RECOMMENDED = 8
+MAX_RANDOM = 2
+MAX_INPUT_ARTICLES = 100
+MIN_ARTICLES_FOR_SELECTION = 8
 
 
-class SelectedArticles(BaseModel):
-    """AI が選定した記事の URL リスト。"""
+class SelectionResult(BaseModel):
+    """AI が選定した記事の番号リスト。"""
 
-    selected_urls: list[str]
+    recommended: list[int]
 
 
 def select_articles(
     articles: list[ArticleResponse],
+    bookmarks: list[BookmarkResponse] | None = None,
     model_id: str | None = None,
-) -> list[ArticleResponse]:
+) -> tuple[list[ArticleResponse], list[ArticleResponse]]:
+    """記事を選定する。
+
+    Returns:
+        (recommended_articles, random_articles) のタプル
+        recommended: AIがブックマーク傾向に基づき選定（最大8件）
+        random: 未読からランダム選出（最大2件、recommended と重複なし）
+    """
     if not articles:
-        return []
+        return [], []
 
     if model_id is None:
         model_id = get_settings().bedrock_model_id
 
     if len(articles) <= MIN_ARTICLES_FOR_SELECTION:
-        logger.info("skipping_selection", reason="too_few_articles", count=len(articles))
-        return articles
+        logger.info(
+            "skipping_selection",
+            reason="too_few_articles",
+            count=len(articles),
+        )
+        return articles, []
+
+    # 入力記事を100件に制限（最新順）
+    sorted_articles = sorted(
+        articles,
+        key=lambda a: a.published_at or datetime.min.replace(tzinfo=UTC),
+        reverse=True,
+    )
+    input_articles = sorted_articles[:MAX_INPUT_ARTICLES]
+
+    bookmark_section = ""
+    if bookmarks:
+        bookmark_titles = "\n".join(f"- {b.title}" for b in bookmarks)
+        bookmark_section = (
+            f"## ユーザーのブックマーク傾向\n\n{bookmark_titles}\n\n"
+        )
 
     article_list = "\n".join(
-        f"- [{article.title}]({article.url})" for article in articles
+        f"{i}. {article.title}"
+        for i, article in enumerate(input_articles, 1)
     )
     prompt = (
-        "以下の記事リストから注目記事を選定し、"
-        f"選定した記事のURLリストを返してください。\n\n{article_list}"
+        f"{bookmark_section}"
+        f"## 記事リスト\n\n{article_list}"
     )
 
     try:
@@ -57,43 +91,71 @@ def select_articles(
             system_prompt=SELECTION_SYSTEM_PROMPT,
             tools=[],
             callback_handler=None,
-            structured_output_model=SelectedArticles,
+            structured_output_model=SelectionResult,
         )
         result = agent(prompt)
     except Exception as e:
         logger.warning("article_selection_failed", error=str(e))
-        return _fallback_selection(articles)
+        return _fallback_selection(input_articles)
 
-    selected = _parse_selection_result(result, articles)
-    if not selected:
+    recommended = _parse_selection_result(result, input_articles)
+    if not recommended:
         logger.warning("article_selection_empty_result")
-        return _fallback_selection(articles)
+        return _fallback_selection(input_articles)
 
-    logger.info("articles_selected", total=len(articles), selected=len(selected))
-    return selected
+    # ランダム2件（recommended と重複しない未読から選出）
+    recommended_urls = {a.url for a in recommended}
+    candidates = [a for a in articles if a.url not in recommended_urls]
+    random_picks = random.sample(
+        candidates, min(MAX_RANDOM, len(candidates))
+    )
+
+    logger.info(
+        "articles_selected",
+        total=len(articles),
+        input=len(input_articles),
+        recommended=len(recommended),
+        random=len(random_picks),
+    )
+    return recommended, random_picks
 
 
 def _parse_selection_result(
     result: object, articles: list[ArticleResponse]
 ) -> list[ArticleResponse]:
     try:
-        structured: SelectedArticles | None = getattr(result, "structured_output", None)
+        structured: SelectionResult | None = getattr(
+            result, "structured_output", None
+        )
         if structured is None:
             return []
 
-        url_set = set(structured.selected_urls)
-        return [a for a in articles if a.url in url_set]
+        max_idx = len(articles)
+        recommended = [
+            articles[i - 1]
+            for i in structured.recommended
+            if 1 <= i <= max_idx
+        ][:MAX_RECOMMENDED]
+
+        return recommended
     except Exception as e:
         logger.warning("selection_parse_failed", error=str(e))
         return []
 
 
-def _fallback_selection(articles: list[ArticleResponse]) -> list[ArticleResponse]:
-    """選定失敗時のフォールバック: 最新5件を返す。"""
+def _fallback_selection(
+    articles: list[ArticleResponse],
+) -> tuple[list[ArticleResponse], list[ArticleResponse]]:
+    """選定失敗時のフォールバック: 最新8件+ランダム2件。"""
     logger.info("using_fallback_selection")
     sorted_articles = sorted(
         articles,
         key=lambda a: a.published_at or datetime.min.replace(tzinfo=UTC),
         reverse=True,
     )
-    return sorted_articles[:5]
+    recommended = sorted_articles[:MAX_RECOMMENDED]
+    remaining = sorted_articles[MAX_RECOMMENDED:]
+    random_picks = random.sample(
+        remaining, min(MAX_RANDOM, len(remaining))
+    )
+    return recommended, random_picks

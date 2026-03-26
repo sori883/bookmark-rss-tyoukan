@@ -89,6 +89,8 @@ export const articles = pgTable('articles', {
   feedId: text('feed_id').notNull().references(() => feeds.id, { onDelete: 'cascade' }),
   url: text('url').notNull(),
   title: text('title').notNull(),
+  description: text('description').notNull().default(''),
+  ogImageUrl: text('og_image_url'),
   isRead: boolean('is_read').notNull().default(false),
   publishedAt: timestamp('published_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),

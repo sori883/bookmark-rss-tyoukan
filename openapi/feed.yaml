@@ -199,11 +199,17 @@ paths:
               schema:
                 $ref: "#/components/schemas/BookmarkResponse"
     get:
-      summary: ブックマーク一覧
+      summary: ブックマーク一覧（サービスJWT時はuser_idで対象ユーザー指定可）
       operationId: listBookmarks
       security:
         - bearerAuth: []
       parameters:
+        - name: user_id
+          in: query
+          description: サービスJWT使用時の対象ユーザーID
+          schema:
+            type: string
+            format: uuid
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/LimitParam"
       responses:
@@ -258,6 +264,26 @@ paths:
       responses:
         "204":
           description: 削除成功
+
+  /articles/bulk-read:
+    patch:
+      summary: 記事一括既読更新
+      description: 指定した記事IDの記事を一括で既読にする
+      operationId: bulkReadArticles
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BulkReadRequest"
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BulkReadResponse"
 
   # ─── 設定 ─────────────────────────────────────────
   /settings:
@@ -398,7 +424,7 @@ components:
 
     ArticleResponse:
       type: object
-      required: [id, user_id, feed_id, url, title, is_read, published_at, created_at, updated_at]
+      required: [id, user_id, feed_id, url, title, description, is_read, is_bookmarked, published_at, created_at, updated_at]
       properties:
         id:
           type: string
@@ -413,8 +439,14 @@ components:
           type: string
         title:
           type: string
+        description:
+          type: string
+          description: 記事概要（RSSのdescription）
         is_read:
           type: boolean
+        is_bookmarked:
+          type: boolean
+          description: ブックマーク済みフラグ
         published_at:
           type: string
           format: date-time
@@ -495,6 +527,24 @@ components:
         page:
           type: integer
         limit:
+          type: integer
+
+    BulkReadRequest:
+      type: object
+      required: [article_ids]
+      properties:
+        article_ids:
+          type: array
+          items:
+            type: string
+            format: uuid
+          maxItems: 100
+
+    BulkReadResponse:
+      type: object
+      required: [updated_count]
+      properties:
+        updated_count:
           type: integer
 
     SettingsResponse:

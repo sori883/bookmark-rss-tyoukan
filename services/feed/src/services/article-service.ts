@@ -1,5 +1,5 @@
-import { eq, and, count, desc } from 'drizzle-orm'
-import { articles } from '@bookmark-rss/db'
+import { eq, and, count, desc, sql } from 'drizzle-orm'
+import { articles, bookmarks } from '@bookmark-rss/db'
 import type { AppDb } from '../lib/db.js'
 import { NotFoundError } from '../lib/errors.js'
 
@@ -8,6 +8,7 @@ export interface CreateArticleInput {
   readonly feedId: string
   readonly url: string
   readonly title: string
+  readonly description?: string
   readonly publishedAt: string
 }
 
@@ -27,6 +28,7 @@ export async function createArticle(db: AppDb, input: CreateArticleInput) {
       feedId: input.feedId,
       url: input.url,
       title: input.title,
+      description: input.description ?? '',
       publishedAt: new Date(input.publishedAt),
     })
     .returning()
@@ -51,8 +53,27 @@ export async function listArticles(db: AppDb, query: ListArticlesQuery) {
 
   const [data, [{ total }]] = await Promise.all([
     db
-      .select()
+      .select({
+        id: articles.id,
+        userId: articles.userId,
+        feedId: articles.feedId,
+        url: articles.url,
+        title: articles.title,
+        description: articles.description,
+        isRead: articles.isRead,
+        isBookmarked: sql<boolean>`${bookmarks.id} IS NOT NULL`.as('is_bookmarked'),
+        publishedAt: articles.publishedAt,
+        createdAt: articles.createdAt,
+        updatedAt: articles.updatedAt,
+      })
       .from(articles)
+      .leftJoin(
+        bookmarks,
+        and(
+          eq(articles.id, bookmarks.articleId),
+          eq(articles.userId, bookmarks.userId),
+        ),
+      )
       .where(where)
       .orderBy(desc(articles.publishedAt))
       .limit(query.limit)
@@ -100,6 +121,32 @@ export async function updateArticle(
   }
 
   return updated
+}
+
+export async function bulkMarkAsRead(db: AppDb, articleIds: readonly string[], userId: string) {
+  const result = await db
+    .update(articles)
+    .set({ isRead: true, updatedAt: new Date() })
+    .where(
+      and(
+        sql`${articles.id} = ANY(${articleIds}::text[])`,
+        eq(articles.userId, userId),
+        eq(articles.isRead, false),
+      ),
+    )
+    .returning({ id: articles.id })
+
+  return result.length
+}
+
+export async function markAsReadByUrl(db: AppDb, url: string, userId: string) {
+  const [updated] = await db
+    .update(articles)
+    .set({ isRead: true, updatedAt: new Date() })
+    .where(and(eq(articles.url, url), eq(articles.userId, userId)))
+    .returning({ id: articles.id })
+
+  return updated ?? null
 }
 
 export async function deleteArticle(db: AppDb, id: string, userId: string) {

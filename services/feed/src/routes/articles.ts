@@ -16,7 +16,9 @@ function toResponse(a: {
   feedId: string
   url: string
   title: string
+  description: string
   isRead: boolean
+  isBookmarked?: boolean
   publishedAt: Date | null
   createdAt: Date
   updatedAt: Date
@@ -27,7 +29,9 @@ function toResponse(a: {
     feed_id: a.feedId,
     url: a.url,
     title: a.title,
+    description: a.description,
     is_read: a.isRead,
+    is_bookmarked: a.isBookmarked ?? false,
     published_at: a.publishedAt?.toISOString() ?? null,
     created_at: a.createdAt.toISOString(),
     updated_at: a.updatedAt.toISOString(),
@@ -120,6 +124,54 @@ app.get('/:id', async (c) => {
 
   return c.json(toResponse(article))
 })
+
+// PATCH /articles/mark-read-by-url — URL指定で既読（/:id より先に定義）
+app.patch(
+  '/mark-read-by-url',
+  zValidator(
+    'json',
+    z.object({
+      url: z.string().url(),
+    }),
+  ),
+  async (c) => {
+    const { url } = c.req.valid('json')
+    const userId = getUserId(c.get('jwtPayload'))
+
+    await articleService.markAsReadByUrl(db, url, userId)
+
+    return c.json({ success: true })
+  },
+)
+
+// PATCH /articles/bulk-read — 記事一括既読（/:id より先に定義）
+app.patch(
+  '/bulk-read',
+  zValidator(
+    'json',
+    z.object({
+      article_ids: z.array(z.string()).min(1).max(100),
+    }),
+  ),
+  async (c) => {
+    const { article_ids } = c.req.valid('json')
+    const payload = c.get('jwtPayload')
+    const userId = isServiceToken(payload)
+      ? c.req.query('user_id')
+      : getUserId(payload)
+
+    if (!userId) {
+      return c.json(
+        { error: { code: 'VALIDATION_ERROR', message: 'user_id is required' } },
+        400,
+      )
+    }
+
+    const updatedCount = await articleService.bulkMarkAsRead(db, article_ids, userId)
+
+    return c.json({ updated_count: updatedCount })
+  },
+)
 
 // PATCH /articles/:id — 記事更新（既読）
 app.patch(

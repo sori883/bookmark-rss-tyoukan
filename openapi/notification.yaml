@@ -103,7 +103,10 @@ components:
           format: uuid
         message:
           type: string
-          description: 要約+URL一覧を含むダイジェストテキスト
+          description: 通知本文（Marp Markdown）。DB保存・WebUI表示用
+        webhook_message:
+          type: string
+          description: Webhook送信用の短文メッセージ。省略時はmessageを送信
 
     NotifyResponse:
       type: object

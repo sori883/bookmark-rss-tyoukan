@@ -18,6 +18,7 @@ import { Route as AuthenticatedNotificationsIndexRouteImport } from './routes/_a
 import { Route as AuthenticatedFeedsIndexRouteImport } from './routes/_authenticated/feeds/index'
 import { Route as AuthenticatedBookmarksIndexRouteImport } from './routes/_authenticated/bookmarks/index'
 import { Route as AuthenticatedArticlesIndexRouteImport } from './routes/_authenticated/articles/index'
+import { Route as AuthenticatedNotificationsIdRouteImport } from './routes/_authenticated/notifications/$id'
 import { Route as AuthenticatedBookmarksIdRouteImport } from './routes/_authenticated/bookmarks/$id'
 
 const LoginRoute = LoginRouteImport.update({
@@ -69,6 +70,12 @@ const AuthenticatedArticlesIndexRoute =
     path: '/articles/',
     getParentRoute: () => AuthenticatedRoute,
   } as any)
+const AuthenticatedNotificationsIdRoute =
+  AuthenticatedNotificationsIdRouteImport.update({
+    id: '/notifications/$id',
+    path: '/notifications/$id',
+    getParentRoute: () => AuthenticatedRoute,
+  } as any)
 const AuthenticatedBookmarksIdRoute =
   AuthenticatedBookmarksIdRouteImport.update({
     id: '/bookmarks/$id',
@@ -81,6 +88,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/bookmark-add': typeof AuthenticatedBookmarkAddRoute
   '/bookmarks/$id': typeof AuthenticatedBookmarksIdRoute
+  '/notifications/$id': typeof AuthenticatedNotificationsIdRoute
   '/articles/': typeof AuthenticatedArticlesIndexRoute
   '/bookmarks/': typeof AuthenticatedBookmarksIndexRoute
   '/feeds/': typeof AuthenticatedFeedsIndexRoute
@@ -92,6 +100,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/bookmark-add': typeof AuthenticatedBookmarkAddRoute
   '/bookmarks/$id': typeof AuthenticatedBookmarksIdRoute
+  '/notifications/$id': typeof AuthenticatedNotificationsIdRoute
   '/articles': typeof AuthenticatedArticlesIndexRoute
   '/bookmarks': typeof AuthenticatedBookmarksIndexRoute
   '/feeds': typeof AuthenticatedFeedsIndexRoute
@@ -105,6 +114,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_authenticated/bookmark-add': typeof AuthenticatedBookmarkAddRoute
   '/_authenticated/bookmarks/$id': typeof AuthenticatedBookmarksIdRoute
+  '/_authenticated/notifications/$id': typeof AuthenticatedNotificationsIdRoute
   '/_authenticated/articles/': typeof AuthenticatedArticlesIndexRoute
   '/_authenticated/bookmarks/': typeof AuthenticatedBookmarksIndexRoute
   '/_authenticated/feeds/': typeof AuthenticatedFeedsIndexRoute
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/bookmark-add'
     | '/bookmarks/$id'
+    | '/notifications/$id'
     | '/articles/'
     | '/bookmarks/'
     | '/feeds/'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/bookmark-add'
     | '/bookmarks/$id'
+    | '/notifications/$id'
     | '/articles'
     | '/bookmarks'
     | '/feeds'
@@ -141,6 +153,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_authenticated/bookmark-add'
     | '/_authenticated/bookmarks/$id'
+    | '/_authenticated/notifications/$id'
     | '/_authenticated/articles/'
     | '/_authenticated/bookmarks/'
     | '/_authenticated/feeds/'
@@ -219,6 +232,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedArticlesIndexRouteImport
       parentRoute: typeof AuthenticatedRoute
     }
+    '/_authenticated/notifications/$id': {
+      id: '/_authenticated/notifications/$id'
+      path: '/notifications/$id'
+      fullPath: '/notifications/$id'
+      preLoaderRoute: typeof AuthenticatedNotificationsIdRouteImport
+      parentRoute: typeof AuthenticatedRoute
+    }
     '/_authenticated/bookmarks/$id': {
       id: '/_authenticated/bookmarks/$id'
       path: '/bookmarks/$id'
@@ -232,6 +252,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteChildren {
   AuthenticatedBookmarkAddRoute: typeof AuthenticatedBookmarkAddRoute
   AuthenticatedBookmarksIdRoute: typeof AuthenticatedBookmarksIdRoute
+  AuthenticatedNotificationsIdRoute: typeof AuthenticatedNotificationsIdRoute
   AuthenticatedArticlesIndexRoute: typeof AuthenticatedArticlesIndexRoute
   AuthenticatedBookmarksIndexRoute: typeof AuthenticatedBookmarksIndexRoute
   AuthenticatedFeedsIndexRoute: typeof AuthenticatedFeedsIndexRoute
@@ -242,6 +263,7 @@ interface AuthenticatedRouteChildren {
 const AuthenticatedRouteChildren: AuthenticatedRouteChildren = {
   AuthenticatedBookmarkAddRoute: AuthenticatedBookmarkAddRoute,
   AuthenticatedBookmarksIdRoute: AuthenticatedBookmarksIdRoute,
+  AuthenticatedNotificationsIdRoute: AuthenticatedNotificationsIdRoute,
   AuthenticatedArticlesIndexRoute: AuthenticatedArticlesIndexRoute,
   AuthenticatedBookmarksIndexRoute: AuthenticatedBookmarksIndexRoute,
   AuthenticatedFeedsIndexRoute: AuthenticatedFeedsIndexRoute,

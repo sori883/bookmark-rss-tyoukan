@@ -2,7 +2,7 @@ import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
 import { db } from '../lib/db.js'
-import { authMiddleware, getUserId } from '../middleware/auth.js'
+import { authMiddleware, getUserId, isServiceToken } from '../middleware/auth.js'
 import type { AuthVariables } from '../middleware/auth.js'
 import * as bookmarkService from '../services/bookmark-service.js'
 
@@ -87,7 +87,7 @@ app.post(
   },
 )
 
-// GET /bookmarks — ブックマーク一覧
+// GET /bookmarks — ブックマーク一覧（サービスJWT: user_id クエリパラメータ対応）
 app.get(
   '/',
   zValidator(
@@ -99,7 +99,17 @@ app.get(
   ),
   async (c) => {
     const query = c.req.valid('query')
-    const userId = getUserId(c.get('jwtPayload'))
+    const payload = c.get('jwtPayload')
+    const userId = isServiceToken(payload)
+      ? c.req.query('user_id')
+      : getUserId(payload)
+
+    if (!userId) {
+      return c.json(
+        { error: { code: 'VALIDATION_ERROR', message: 'user_id is required' } },
+        400,
+      )
+    }
 
     const result = await bookmarkService.listBookmarks(db, {
       userId,

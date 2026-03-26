@@ -43,6 +43,7 @@ export function useCreateBookmark() {
     mutationFn: (body: CreateBookmarkRequest) => apiClient.createBookmark(body),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bookmarks'] })
+      queryClient.invalidateQueries({ queryKey: ['articles'] })
     },
   })
 }
