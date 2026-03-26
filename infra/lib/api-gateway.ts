@@ -1,11 +1,17 @@
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
+import {
+  HttpLambdaAuthorizer,
+  HttpLambdaResponseType,
+} from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
+import * as cdk from 'aws-cdk-lib'
 import type { Construct } from 'constructs'
 import type { LambdaFunctionsResult } from './lambda-functions'
 
 export interface ApiGatewayProps {
   readonly stage: string
   readonly lambdas: LambdaFunctionsResult
+  readonly allowOrigins?: readonly string[]
 }
 
 export interface ApiGatewayResult {
@@ -14,22 +20,33 @@ export interface ApiGatewayResult {
 
 /**
  * API Gateway HTTP API を作成し、各 Lambda にルーティングする
+ * 認証が必要なルートには Lambda Authorizer を適用する
  */
 export function createApiGateway(
   scope: Construct,
   props: ApiGatewayProps,
 ): ApiGatewayResult {
-  const { stage, lambdas } = props
+  const { stage, lambdas, allowOrigins = ['*'] } = props
 
   const httpApi = new apigwv2.HttpApi(scope, 'HttpApi', {
     apiName: `bookmark-rss-api-${stage}`,
     corsPreflight: {
-      allowOrigins: ['*'],
+      allowOrigins: [...allowOrigins],
       allowMethods: [apigwv2.CorsHttpMethod.ANY],
       allowHeaders: ['Content-Type', 'Authorization'],
-      allowCredentials: false,
+      allowCredentials: allowOrigins.includes('*') ? false : true,
     },
   })
+
+  // Lambda Authorizer
+  const authorizer = new HttpLambdaAuthorizer(
+    'JwtAuthorizer',
+    lambdas.authorizer,
+    {
+      responseTypes: [HttpLambdaResponseType.SIMPLE],
+      resultsCacheTtl: cdk.Duration.minutes(5),
+    },
+  )
 
   const authIntegration = new HttpLambdaIntegration(
     'AuthIntegration',
@@ -44,30 +61,38 @@ export function createApiGateway(
     lambdas.notification,
   )
 
-  // Auth routes
+  // 認証不要: Auth routes
   addRoute(httpApi, '/auth/{proxy+}', authIntegration)
 
-  // Feed routes (feeds, articles, bookmarks, settings)
-  addRouteWithCollection(httpApi, '/feeds', feedIntegration)
-  addRouteWithCollection(httpApi, '/articles', feedIntegration)
-  addRouteWithCollection(httpApi, '/bookmarks', feedIntegration)
-  addRoute(httpApi, '/settings', feedIntegration)
-
-  // Notification routes
-  addRouteWithCollection(httpApi, '/notifications', notificationIntegration)
-
-  // Health check
+  // 認証不要: Health check
   httpApi.addRoutes({
     path: '/health',
     methods: [apigwv2.HttpMethod.GET],
     integration: feedIntegration,
   })
 
+  // 認証必要: Feed routes
+  addProtectedRouteWithCollection(httpApi, '/feeds', feedIntegration, authorizer)
+  addProtectedRouteWithCollection(httpApi, '/articles', feedIntegration, authorizer)
+  addProtectedRouteWithCollection(httpApi, '/bookmarks', feedIntegration, authorizer)
+  addProtectedRoute(httpApi, '/settings', feedIntegration, authorizer)
+
+  // 認証必要: Notification routes
+  addProtectedRouteWithCollection(httpApi, '/notifications', notificationIntegration, authorizer)
+
   return { httpApi }
 }
 
+const ALL_METHODS = [
+  apigwv2.HttpMethod.GET,
+  apigwv2.HttpMethod.POST,
+  apigwv2.HttpMethod.PUT,
+  apigwv2.HttpMethod.DELETE,
+  apigwv2.HttpMethod.PATCH,
+]
+
 /**
- * ANY メソッドでルートを追加する
+ * 認証なしルート
  */
 function addRoute(
   httpApi: apigwv2.HttpApi,
@@ -76,25 +101,37 @@ function addRoute(
 ): void {
   httpApi.addRoutes({
     path,
-    methods: [
-      apigwv2.HttpMethod.GET,
-      apigwv2.HttpMethod.POST,
-      apigwv2.HttpMethod.PUT,
-      apigwv2.HttpMethod.DELETE,
-      apigwv2.HttpMethod.PATCH,
-    ],
+    methods: ALL_METHODS,
     integration,
   })
 }
 
 /**
- * コレクションルート: /path と /path/{proxy+} の両方を登録する
+ * 認証ありルート
  */
-function addRouteWithCollection(
+function addProtectedRoute(
+  httpApi: apigwv2.HttpApi,
+  path: string,
+  integration: HttpLambdaIntegration,
+  authorizer: HttpLambdaAuthorizer,
+): void {
+  httpApi.addRoutes({
+    path,
+    methods: ALL_METHODS,
+    integration,
+    authorizer,
+  })
+}
+
+/**
+ * 認証ありコレクションルート: /path と /path/{proxy+} の両方を登録する
+ */
+function addProtectedRouteWithCollection(
   httpApi: apigwv2.HttpApi,
   basePath: string,
   integration: HttpLambdaIntegration,
+  authorizer: HttpLambdaAuthorizer,
 ): void {
-  addRoute(httpApi, basePath, integration)
-  addRoute(httpApi, `${basePath}/{proxy+}`, integration)
+  addProtectedRoute(httpApi, basePath, integration, authorizer)
+  addProtectedRoute(httpApi, `${basePath}/{proxy+}`, integration, authorizer)
 }

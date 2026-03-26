@@ -14,6 +14,7 @@ export interface LambdaFunctionsResult {
   readonly auth: NodejsFunction
   readonly feed: NodejsFunction
   readonly notification: NodejsFunction
+  readonly authorizer: NodejsFunction
   readonly urls: {
     readonly auth: string
     readonly feed: string
@@ -61,6 +62,7 @@ export function createLambdaFunctions(
   const auth = createAuthFunction(scope, stage, ssm)
   const feed = createFeedFunction(scope, stage, ssm)
   const notification = createNotificationFunction(scope, stage, ssm)
+  const authorizer = createAuthorizerFunction(scope, stage)
 
   // Function URL を有効化（IAM 認証なし）
   const authUrl = auth.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE })
@@ -68,18 +70,17 @@ export function createLambdaFunctions(
   const notifUrl = notification.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE })
 
   // サービス間 URL を環境変数に追加
+  const jwksUrl = cdk.Fn.join('', [authUrl.url, 'auth/.well-known/jwks.json'])
   addServiceUrls(auth, { AUTH_SERVICE_URL: authUrl.url })
-  addServiceUrls(feed, {
-    AUTH_JWKS_URL: cdk.Fn.join('', [authUrl.url, 'auth/.well-known/jwks.json']),
-  })
-  addServiceUrls(notification, {
-    AUTH_JWKS_URL: cdk.Fn.join('', [authUrl.url, 'auth/.well-known/jwks.json']),
-  })
+  addServiceUrls(feed, { AUTH_JWKS_URL: jwksUrl })
+  addServiceUrls(notification, { AUTH_JWKS_URL: jwksUrl })
+  addServiceUrls(authorizer, { AUTH_JWKS_URL: jwksUrl })
 
   return {
     auth,
     feed,
     notification,
+    authorizer,
     urls: {
       auth: authUrl.url,
       feed: feedUrl.url,
@@ -129,6 +130,29 @@ function createNotificationFunction(
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
       DATABASE_URL: ssm.values['database-url'],
+    },
+  })
+}
+
+function createAuthorizerFunction(
+  scope: Construct,
+  stage: string,
+): NodejsFunction {
+  return new NodejsFunction(scope, 'AuthorizerFunction', {
+    functionName: `bookmark-rss-authorizer-${stage}`,
+    entry: path.join(__dirname, '../functions/jwt-authorizer.ts'),
+    handler: 'handler',
+    runtime: lambda.Runtime.NODEJS_22_X,
+    memorySize: 128,
+    timeout: cdk.Duration.seconds(10),
+    bundling: {
+      minify: true,
+      sourceMap: true,
+      target: 'node22',
+      format: OutputFormat.ESM,
+    },
+    environment: {
+      NODE_OPTIONS: '--enable-source-maps',
     },
   })
 }
