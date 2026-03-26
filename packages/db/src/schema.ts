@@ -160,3 +160,14 @@ export const jobs = pgTable('jobs', {
 }, (table) => [
   index('idx_jobs_pending').on(table.jobType, table.createdAt).where(sql`status = 'pending'`),
 ])
+
+// ─── device_codes（CLI デバイスフロー認証）────────────
+export const deviceCodes = pgTable('device_codes', {
+  id: text('id').$defaultFn(() => crypto.randomUUID()).primaryKey(),
+  deviceCode: text('device_code').notNull().unique(),
+  userCode: text('user_code').notNull().unique(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }),
+  status: text('status').notNull().default('pending'), // pending | authorized | expired
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+})

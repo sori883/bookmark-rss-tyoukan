@@ -16,7 +16,6 @@
 | web | apps/web |
 | cli | apps/cli |
 | db | packages/db |
-| mcp-server | packages/mcp-server |
 | infra | infra/ |
 | openapi | openapi/ |
 

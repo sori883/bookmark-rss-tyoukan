@@ -1,7 +1,6 @@
 ---
 paths:
   - "services/ai/**/*.py"
-  - "packages/mcp-server/**/*.py"
 ---
 
 # Python サービス規約
@@ -29,11 +28,6 @@ class DigestRequest(BaseModel):
 async def digest(req: DigestRequest):
     ...
 ```
-
-## mcp-server: FastMCP
-
-- `mcp` ライブラリの `FastMCP` を使用
-- stdio トランスポート
 
 ## コードスタイル
 

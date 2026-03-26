@@ -78,49 +78,26 @@ pub struct CreateBookmarkRequest {
     pub url: Option<String>,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct DeviceCodeResponse {
+    pub device_code: String,
+    pub user_code: String,
+    pub verification_uri: String,
+    pub expires_in: u64,
+    pub interval: u64,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeviceTokenResponse {
+    pub access_token: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct DeviceTokenError {
+    pub error: String,
+}
+
 #[derive(Debug, Serialize)]
-pub struct SocialSignInRequest {
-    pub provider: String,
-    #[serde(rename = "callbackURL")]
-    pub callback_url: String,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-pub struct SocialSignInResponse {
-    pub url: String,
-    pub redirect: bool,
-}
-
-// Used by OAuth HTML bridge (JS-side), kept for spec completeness
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-pub struct SessionResponse {
-    pub session: SessionInfo,
-    pub user: SessionUser,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-pub struct SessionInfo {
-    pub id: String,
-    #[serde(rename = "userId")]
-    pub user_id: String,
-    pub token: String,
-    #[serde(rename = "expiresAt")]
-    pub expires_at: String,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-pub struct SessionUser {
-    pub id: String,
-    pub email: String,
-    pub name: String,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Deserialize)]
-pub struct TokenResponse {
-    pub token: String,
+pub struct DeviceTokenRequest {
+    pub device_code: String,
 }

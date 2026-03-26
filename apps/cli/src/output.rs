@@ -15,11 +15,7 @@ fn truncate(s: &str, max_chars: usize) -> String {
 }
 
 fn short_id(id: &str) -> &str {
-    if id.len() > 8 && id.is_char_boundary(8) {
-        &id[..8]
-    } else {
-        id
-    }
+    id
 }
 
 fn format_pagination<T>(response: &PaginatedResponse<T>) -> String {
@@ -152,7 +148,7 @@ mod tests {
 
     #[test]
     fn test_short_id_uuid() {
-        assert_eq!(short_id("abcdef12-3456-7890"), "abcdef12");
+        assert_eq!(short_id("abcdef12-3456-7890"), "abcdef12-3456-7890");
         assert_eq!(short_id("short"), "short");
     }
 

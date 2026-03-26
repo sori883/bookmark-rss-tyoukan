@@ -13,7 +13,7 @@ description: todos CLI を使ったサービス別タスク管理の実行手順
 このモノレポではサービスごとに `--project` を分ける:
 
 ```
-auth, bff, feed, ai, notification, web, cli, db, mcp-server, infra, openapi
+auth, bff, feed, ai, notification, web, cli, db, infra, openapi
 ```
 
 ## タスク作成テンプレート
@@ -22,7 +22,7 @@ auth, bff, feed, ai, notification, web, cli, db, mcp-server, infra, openapi
 # 1. 親タスク作成（サービス名をprojectに指定）
 todos add "機能名: 概要" --label <category> --project <service> --created-by ai
 # label: feature | bug | improvement | refactor | documentation | chore
-# service: auth | bff | feed | ai | notification | web | cli | db | mcp-server
+# service: auth | bff | feed | ai | notification | web | cli | db
 
 # 2. 親タスク ID 取得（前方一致 prefix を使用）
 todos list -P <service> --format json
@@ -64,7 +64,7 @@ todos status <ID> done          # 完了してから次へ
 # TypeScript サービス（auth, bff, feed, notification）
 cd services/<name> && pnpm lint && pnpm typecheck && pnpm test
 
-# Python サービス（ai, mcp-server）
+# Python サービス（ai）
 cd services/ai && uv run ruff check . && uv run pyright . && uv run pytest
 
 # Rust（cli）

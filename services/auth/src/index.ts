@@ -8,6 +8,7 @@ import { createAuth } from './auth'
 import { createServiceTokenRoute } from './routes/service-token'
 import { createJwksRoute } from './routes/jwks'
 import { createMeRoute } from './routes/me'
+import { createDeviceRoute } from './routes/device'
 import { errorResponse } from './lib/errors'
 
 export function buildApp() {
@@ -21,7 +22,11 @@ export function buildApp() {
     googleClientSecret: config.GOOGLE_CLIENT_SECRET,
     secret: config.BETTER_AUTH_SECRET,
     baseURL: config.BETTER_AUTH_URL,
-    trustedOrigins: [config.WEB_ORIGIN],
+    trustedOrigins: [
+      config.WEB_ORIGIN,
+      // CLI OAuth コールバック（ポート 18923〜18932）
+      ...Array.from({ length: 10 }, (_, i) => `http://localhost:${18923 + i}`),
+    ],
   })
 
   const app = new Hono()
@@ -50,6 +55,7 @@ export function buildApp() {
   app.route('/auth', createServiceTokenRoute(db, logger))
   app.route('/auth', createJwksRoute(db))
   app.route('/auth', createMeRoute(auth))
+  app.route('/auth', createDeviceRoute(db, auth))
 
   // Better Auth handler — handles /auth/* routes (sign-in, callback, session, etc.)
   app.on(['GET', 'POST'], '/auth/*', (c) => {
