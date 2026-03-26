@@ -22,3 +22,34 @@ RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合
 main エージェントが `git worktree add` で worktree を作成し、ユーザーが各 worktree で個別に AI エージェントを立ち上げて実装する。main エージェントはオーケストレーション（設計・計画・タスク管理・マージ指示）に徹し、worktree 内のファイル操作は行わない。
 
 openapi/ と packages/db/ は契約。変更時は main で確定させてから各 worktree に反映する。
+
+## CDKデプロイ手順
+
+### 前提: SSMパラメータの事前設定
+
+初回のみ、AWS SSM Parameter Store に以下を手動設定する:
+
+```bash
+aws ssm put-parameter --name "/bookmark-rss/dev/database-url" --value "postgresql://..." --type String
+aws ssm put-parameter --name "/bookmark-rss/dev/google-client-id" --value "xxx" --type String
+aws ssm put-parameter --name "/bookmark-rss/dev/google-client-secret" --value "xxx" --type String
+aws ssm put-parameter --name "/bookmark-rss/dev/better-auth-secret" --value "xxx" --type String
+aws ssm put-parameter --name "/bookmark-rss/dev/ai-client-id" --value "xxx" --type String
+aws ssm put-parameter --name "/bookmark-rss/dev/ai-client-secret" --value "xxx" --type String
+```
+
+### デプロイ
+
+```bash
+cd infra
+pnpm install
+npx cdk diff          # 変更内容の確認
+npx cdk deploy --all  # デプロイ実行
+```
+
+### デプロイされるリソース
+
+- Lambda x4: auth, feed, notification, **authorizer**（JWT検証）
+- API Gateway HTTP API（Lambda Authorizer付き）
+- AgentCore Runtime（ai）
+- EventBridge Scheduler（RSS定期取得, AIダイジェスト）
