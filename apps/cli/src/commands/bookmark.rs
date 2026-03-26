@@ -17,13 +17,13 @@ pub async fn add(client: &ApiClient, target: &str) -> Result<()> {
     };
 
     let bookmark = client.create_bookmark(article_id, url).await?;
-    eprintln!("Bookmarked: {}", bookmark.title);
+    println!("Bookmarked: {}", bookmark.title);
     Ok(())
 }
 
 pub async fn remove(client: &ApiClient, id: &str) -> Result<()> {
     client.delete_bookmark(id).await?;
-    eprintln!("Bookmark removed.");
+    println!("Bookmark removed.");
     Ok(())
 }
 
@@ -35,10 +35,6 @@ pub async fn read(client: &ApiClient, id: &str) -> Result<()> {
 
 pub async fn search(client: &ApiClient, keyword: &str) -> Result<()> {
     let response = client.search_bookmarks(keyword, 1, 20).await?;
-    if response.data.is_empty() {
-        eprintln!("No bookmarks found.");
-    } else {
-        output::print_bookmarks_table(&response);
-    }
+    output::print_bookmarks_table(&response);
     Ok(())
 }

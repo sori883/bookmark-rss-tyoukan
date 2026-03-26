@@ -111,9 +111,10 @@ export async function deleteBookmark(db: AppDb, id: string, userId: string) {
 }
 
 export async function searchBookmarks(db: AppDb, query: SearchBookmarksQuery) {
+  const pattern = `%${query.q}%`
   const where = and(
     eq(bookmarks.userId, query.userId),
-    sql`search_vector @@ plainto_tsquery('simple', ${query.q})`,
+    sql`(${bookmarks.title} ILIKE ${pattern} OR ${bookmarks.contentMarkdown} ILIKE ${pattern})`,
   )
 
   const [data, [{ total }]] = await Promise.all([

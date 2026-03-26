@@ -9,7 +9,11 @@ mod error;
 mod output;
 
 #[derive(Parser)]
-#[command(name = "bookmark-rss", about = "CLI経由で記事検索・ブックマーク操作")]
+#[command(
+    name = "bookmark-rss",
+    about = "CLI経由で記事検索・ブックマーク操作",
+    disable_help_subcommand = true
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -17,6 +21,8 @@ struct Cli {
 
 #[derive(clap::Subcommand)]
 enum Commands {
+    /// 全コマンド一覧を表示
+    Help,
     /// OAuthログイン
     Login,
     /// フィード操作
@@ -87,6 +93,10 @@ async fn main() -> Result<()> {
     let app_config = config::AppConfig::load()?;
 
     match cli.command {
+        Commands::Help => {
+            print_help();
+            Ok(())
+        }
         Commands::Login => commands::login::execute(&app_config).await,
         Commands::Feed { action } => {
             let api = build_client(&app_config)?;
@@ -119,6 +129,27 @@ async fn main() -> Result<()> {
             }
         }
     }
+}
+
+fn print_help() {
+    println!(
+        "\
+bookmark-rss - CLI経由で記事検索・ブックマーク操作
+
+Commands:
+  login                                OAuthログイン
+  feed list                            フィード一覧
+  feed add <url>                       フィード追加
+  feed remove <id>                     フィード削除
+  feed import <file>                   OPMLインポート
+  article list [--unread] [--feed <id>]  記事一覧
+  article read <id>                    記事詳細表示
+  bookmark list                        ブックマーク一覧
+  bookmark add <target>                ブックマーク追加 (URL or 記事ID)
+  bookmark remove <id>                 ブックマーク削除
+  bookmark read <id>                   ブックマーク本文表示
+  bookmark search <keyword>            ブックマーク全文検索"
+    );
 }
 
 fn build_client(config: &config::AppConfig) -> Result<client::ApiClient> {

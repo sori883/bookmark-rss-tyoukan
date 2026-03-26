@@ -13,13 +13,13 @@ pub async fn list(client: &ApiClient) -> Result<()> {
 
 pub async fn add(client: &ApiClient, url: &str) -> Result<()> {
     let feed = client.create_feed(url).await?;
-    eprintln!("Feed added: {} ({})", feed.title, feed.url);
+    println!("Feed added: {} ({})", feed.title, feed.url);
     Ok(())
 }
 
 pub async fn remove(client: &ApiClient, id: &str) -> Result<()> {
     client.delete_feed(id).await?;
-    eprintln!("Feed removed.");
+    println!("Feed removed.");
     Ok(())
 }
 

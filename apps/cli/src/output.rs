@@ -1,21 +1,9 @@
-use comfy_table::{ContentArrangement, Table};
-
 use crate::client::models::{
     ArticleResponse, BookmarkResponse, FeedResponse, ImportOpmlResponse, PaginatedResponse,
 };
 
-fn truncate(s: &str, max_chars: usize) -> String {
-    let char_count = s.chars().count();
-    if char_count <= max_chars {
-        s.to_string()
-    } else {
-        let truncated: String = s.chars().take(max_chars.saturating_sub(3)).collect();
-        format!("{truncated}...")
-    }
-}
-
-fn short_id(id: &str) -> &str {
-    id
+fn sanitize(s: &str) -> String {
+    s.replace(['\t', '\n'], " ")
 }
 
 fn format_pagination<T>(response: &PaginatedResponse<T>) -> String {
@@ -40,28 +28,24 @@ fn format_pagination<T>(response: &PaginatedResponse<T>) -> String {
 
 pub fn print_feeds_table(feeds: &[FeedResponse]) {
     if feeds.is_empty() {
-        eprintln!("No feeds found.");
+        println!("No feeds found.");
         return;
     }
 
-    let mut table = Table::new();
-    table.set_content_arrangement(ContentArrangement::Dynamic);
-    table.set_header(vec!["ID", "Title", "URL", "Last Fetched"]);
-
+    println!("ID\tTitle\tURL\tLast Fetched");
     for feed in feeds {
-        table.add_row(vec![
-            short_id(&feed.id),
-            &truncate(&feed.title, 30),
-            &truncate(&feed.url, 40),
+        println!(
+            "{}\t{}\t{}\t{}",
+            feed.id,
+            sanitize(&feed.title),
+            sanitize(&feed.url),
             feed.last_fetched_at.as_deref().unwrap_or("-"),
-        ]);
+        );
     }
-
-    println!("{table}");
 }
 
 pub fn print_import_result(result: &ImportOpmlResponse) {
-    eprintln!("Imported {} feed(s).", result.imported_count);
+    println!("Imported {} feed(s).", result.imported_count);
     if !result.feeds.is_empty() {
         print_feeds_table(&result.feeds);
     }
@@ -69,26 +53,22 @@ pub fn print_import_result(result: &ImportOpmlResponse) {
 
 pub fn print_articles_table(response: &PaginatedResponse<ArticleResponse>) {
     if response.data.is_empty() {
-        eprintln!("No articles found.");
+        println!("No articles found.");
         return;
     }
 
-    let mut table = Table::new();
-    table.set_content_arrangement(ContentArrangement::Dynamic);
-    table.set_header(vec!["ID", "", "Title", "Published"]);
-
+    println!("ID\tUnread\tTitle\tPublished");
     for article in &response.data {
-        let read_mark = if article.is_read { " " } else { "*" };
-        table.add_row(vec![
-            short_id(&article.id),
-            read_mark,
-            &truncate(&article.title, 50),
-            &article.published_at,
-        ]);
+        let unread = if article.is_read { "" } else { "*" };
+        println!(
+            "{}\t{}\t{}\t{}",
+            article.id,
+            unread,
+            sanitize(&article.title),
+            article.published_at,
+        );
     }
-
-    println!("{table}");
-    eprintln!("{}", format_pagination(response));
+    println!("{}", format_pagination(response));
 }
 
 pub fn print_article_detail(article: &ArticleResponse) {
@@ -101,56 +81,33 @@ pub fn print_article_detail(article: &ArticleResponse) {
 
 pub fn print_bookmarks_table(response: &PaginatedResponse<BookmarkResponse>) {
     if response.data.is_empty() {
-        eprintln!("No bookmarks found.");
+        println!("No bookmarks found.");
         return;
     }
 
-    let mut table = Table::new();
-    table.set_content_arrangement(ContentArrangement::Dynamic);
-    table.set_header(vec!["ID", "Title", "URL", "Created"]);
-
+    println!("ID\tTitle\tURL\tCreated");
     for bookmark in &response.data {
-        table.add_row(vec![
-            short_id(&bookmark.id),
-            &truncate(&bookmark.title, 40),
-            &truncate(&bookmark.url, 40),
-            &bookmark.created_at,
-        ]);
+        println!(
+            "{}\t{}\t{}\t{}",
+            bookmark.id,
+            sanitize(&bookmark.title),
+            sanitize(&bookmark.url),
+            bookmark.created_at,
+        );
     }
-
-    println!("{table}");
-    eprintln!("{}", format_pagination(response));
+    println!("{}", format_pagination(response));
 }
 
 pub fn print_bookmark_markdown(bookmark: &BookmarkResponse) {
-    eprintln!("Title: {}", bookmark.title);
-    eprintln!("URL:   {}", bookmark.url);
-    eprintln!("---");
-    termimad::print_text(&bookmark.content_markdown);
+    println!("Title: {}", bookmark.title);
+    println!("URL:   {}", bookmark.url);
+    println!("---");
+    println!("{}", bookmark.content_markdown);
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn test_truncate_ascii() {
-        assert_eq!(truncate("hello", 10), "hello");
-        assert_eq!(truncate("hello world!", 8), "hello...");
-    }
-
-    #[test]
-    fn test_truncate_japanese() {
-        let jp = "日本語のテスト文字列です";
-        assert_eq!(truncate(jp, 20), jp);
-        assert_eq!(truncate(jp, 6), "日本語...");
-    }
-
-    #[test]
-    fn test_short_id_uuid() {
-        assert_eq!(short_id("abcdef12-3456-7890"), "abcdef12-3456-7890");
-        assert_eq!(short_id("short"), "short");
-    }
 
     #[test]
     fn test_format_pagination_normal() {
