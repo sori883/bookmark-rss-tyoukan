@@ -3,6 +3,7 @@ set -eo pipefail
 
 STAGE="${1:-dev}"
 ENV_FILE="${2:-infra/.env.deploy}"
+export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-1}"
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "Error: $ENV_FILE not found"
