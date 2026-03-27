@@ -27,15 +27,12 @@ openapi/ と packages/db/ は契約。変更時は main で確定させてから
 
 ### 前提: SSMパラメータの事前設定
 
-初回のみ、AWS SSM Parameter Store に以下を手動設定する:
+初回のみ。`infra/.env.deploy.example` をコピーして値を埋め、スクリプトで登録する:
 
 ```bash
-aws ssm put-parameter --name "/bookmark-rss/dev/database-url" --value "postgresql://..." --type String
-aws ssm put-parameter --name "/bookmark-rss/dev/google-client-id" --value "xxx" --type String
-aws ssm put-parameter --name "/bookmark-rss/dev/google-client-secret" --value "xxx" --type String
-aws ssm put-parameter --name "/bookmark-rss/dev/better-auth-secret" --value "xxx" --type String
-aws ssm put-parameter --name "/bookmark-rss/dev/ai-client-id" --value "xxx" --type String
-aws ssm put-parameter --name "/bookmark-rss/dev/ai-client-secret" --value "xxx" --type String
+cp infra/.env.deploy.example infra/.env.deploy
+# infra/.env.deploy を編集して実際の値を設定
+bash infra/scripts/setup-ssm.sh dev
 ```
 
 ### デプロイ
