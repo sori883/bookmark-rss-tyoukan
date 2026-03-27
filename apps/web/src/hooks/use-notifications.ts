@@ -11,6 +11,7 @@ export function notificationsQueryOptions(params: PaginationParams = {}) {
   return queryOptions({
     queryKey: ['notifications', params] as const,
     queryFn: () => apiClient.getNotifications(params),
+    staleTime: 0,
   })
 }
 

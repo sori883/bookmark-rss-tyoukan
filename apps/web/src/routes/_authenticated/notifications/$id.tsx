@@ -12,7 +12,7 @@ export const Route = createFileRoute('/_authenticated/notifications/$id')({
 
 function NotificationDetailPage() {
   const { id } = Route.useParams()
-  const { data, isLoading, error, refetch } = useNotifications({ limit: 100 })
+  const { data, isLoading, isFetching, error, refetch } = useNotifications({ limit: 100 })
   const markRead = useMarkNotificationRead()
 
   const notification = data?.data.find((n) => n.id === id)
@@ -23,7 +23,7 @@ function NotificationDetailPage() {
     }
   }, [notification?.id, notification?.is_read])
 
-  if (isLoading) return <Loading />
+  if (isLoading || (isFetching && !notification)) return <Loading />
   if (error) return <ErrorMessage message="通知の取得に失敗しました" onRetry={() => refetch()} />
   if (!notification) {
     return <ErrorMessage message="通知が見つかりませんでした" />
