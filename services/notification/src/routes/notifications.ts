@@ -14,7 +14,7 @@ import {
 type Env = { Variables: { jwtPayload: JwtPayload } }
 
 const notifyRequestSchema = z.object({
-  user_id: z.string().uuid(),
+  user_id: z.string().min(1),
   message: z.string().min(1),
   webhook_message: z.string().min(1).optional(),
 })

@@ -110,7 +110,7 @@ describe('POST /notify', () => {
     expect(res.status).toBe(400)
   })
 
-  it('should return 400 when user_id is not a UUID', async () => {
+  it('should return 400 when user_id is empty', async () => {
     const app = buildTestApp({ type: 'service' })
     const res = await app.request('/notify', {
       method: 'POST',
@@ -118,7 +118,7 @@ describe('POST /notify', () => {
         'Content-Type': 'application/json',
         Authorization: 'Bearer test-token',
       },
-      body: JSON.stringify({ user_id: 'not-a-uuid', message: 'test' }),
+      body: JSON.stringify({ user_id: '', message: 'test' }),
     })
 
     expect(res.status).toBe(400)
