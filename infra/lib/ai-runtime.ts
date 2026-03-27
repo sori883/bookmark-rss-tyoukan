@@ -52,6 +52,7 @@ export function createAiRuntime(
       NOTIFICATION_SERVICE_URL: props.notificationServiceUrl,
       AI_CLIENT_ID: ssm.values['ai-client-id'],
       AI_CLIENT_SECRET: ssm.values['ai-client-secret'],
+      BEDROCK_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
     },
   })
 
