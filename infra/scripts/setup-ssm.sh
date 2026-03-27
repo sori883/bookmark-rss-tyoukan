@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -eo pipefail
 
 STAGE="${1:-dev}"
 ENV_FILE="${2:-infra/.env.deploy}"
@@ -19,38 +19,36 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-# env var name -> SSM param key mapping
-declare -A PARAMS=(
-  ["DATABASE_URL"]="database-url"
-  ["GOOGLE_CLIENT_ID"]="google-client-id"
-  ["GOOGLE_CLIENT_SECRET"]="google-client-secret"
-  ["BETTER_AUTH_SECRET"]="better-auth-secret"
-  ["AI_CLIENT_ID"]="ai-client-id"
-  ["AI_CLIENT_SECRET"]="ai-client-secret"
-)
-
 # Load .env file
 set -a
 source "$ENV_FILE"
 set +a
 
-for env_key in "${!PARAMS[@]}"; do
-  ssm_key="${PARAMS[$env_key]}"
-  value="${!env_key:-}"
+put_param() {
+  local env_key="$1"
+  local ssm_key="$2"
+  local value="${!env_key:-}"
 
   if [ -z "$value" ]; then
     echo "SKIP: $env_key is empty"
-    continue
+    return
   fi
 
-  param_name="/bookmark-rss/${STAGE}/${ssm_key}"
+  local param_name="/bookmark-rss/${STAGE}/${ssm_key}"
   echo "PUT: $param_name"
   aws ssm put-parameter \
     --name "$param_name" \
     --value "$value" \
     --type String \
     --overwrite
-done
+}
+
+put_param DATABASE_URL          database-url
+put_param GOOGLE_CLIENT_ID      google-client-id
+put_param GOOGLE_CLIENT_SECRET  google-client-secret
+put_param BETTER_AUTH_SECRET    better-auth-secret
+put_param AI_CLIENT_ID          ai-client-id
+put_param AI_CLIENT_SECRET      ai-client-secret
 
 echo ""
 echo "Done. SSM parameters set for stage: $STAGE"
