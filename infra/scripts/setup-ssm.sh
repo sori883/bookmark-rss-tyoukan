@@ -2,13 +2,19 @@
 set -eo pipefail
 
 STAGE="${1:-dev}"
-ENV_FILE="${2:-infra/.env.deploy}"
+PROFILE="${2:-}"
+ENV_FILE="${3:-infra/.env.deploy}"
 export AWS_DEFAULT_REGION="${AWS_DEFAULT_REGION:-ap-northeast-1}"
+
+AWS_OPTS=""
+if [ -n "$PROFILE" ]; then
+  AWS_OPTS="--profile $PROFILE"
+fi
 
 if [ ! -f "$ENV_FILE" ]; then
   echo "Error: $ENV_FILE not found"
   echo ""
-  echo "Usage: bash infra/scripts/setup-ssm.sh [stage] [env-file]"
+  echo "Usage: bash infra/scripts/setup-ssm.sh [stage] [profile] [env-file]"
   echo ""
   echo "Create $ENV_FILE with:"
   echo "  DATABASE_URL=postgresql://..."
@@ -41,7 +47,8 @@ put_param() {
     --name "$param_name" \
     --value "$value" \
     --type String \
-    --overwrite
+    --overwrite \
+    $AWS_OPTS
 }
 
 put_param DATABASE_URL          database-url
