@@ -34,8 +34,9 @@ export function createApiGateway(
     corsPreflight: {
       allowOrigins: [...allowOrigins],
       allowMethods: [apigwv2.CorsHttpMethod.ANY],
-      allowHeaders: ['Content-Type', 'Authorization'],
-      allowCredentials: allowOrigins.includes('*') ? false : true,
+      allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+      exposeHeaders: ['Set-Cookie', 'set-auth-jwt'],
+      allowCredentials: true,
     },
   })
 
