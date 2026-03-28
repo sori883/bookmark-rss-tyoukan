@@ -7,6 +7,8 @@
 .env.test
 .env.*.local
 .env.deploy
+.env.development
+.env.production
 
 # dev サービスのログと PID
 logs/
@@ -53,5 +55,6 @@ e2e/.auth/
 cdk.out/
 .vercel/
 .output/
+.wxt/
 .tanstack
 skills-lock.json.agents/
