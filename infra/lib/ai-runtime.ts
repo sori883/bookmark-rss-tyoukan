@@ -31,12 +31,8 @@ export function createAiRuntime(
     path: path.join(__dirname, '../../services/ai'),
     runtime: agentcore.AgentCoreRuntime.PYTHON_3_12,
     entrypoint: [
-      'uvicorn',
-      'src.main:app',
-      '--host',
-      '0.0.0.0',
-      '--port',
-      '8080',
+      'sh',
+      '-c uvicorn src.main:app --host 0.0.0.0 --port 8080',
     ],
   })
 
