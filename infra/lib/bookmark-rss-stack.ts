@@ -33,8 +33,8 @@ export class BookmarkRssStack extends cdk.Stack {
       notificationServiceUrl: lambdaResult.urls.notification,
     })
 
-    // API Gateway HTTP API
-    const { httpApi, domainName } = createApiGateway(this, {
+    // API Gateway REST API
+    const { restApi, domainName } = createApiGateway(this, {
       stage,
       prefix,
       lambdas: lambdaResult,
@@ -53,12 +53,12 @@ export class BookmarkRssStack extends cdk.Stack {
 
     // Outputs
     new cdk.CfnOutput(this, 'ApiUrl', {
-      value: httpApi.url ?? '',
+      value: restApi.url,
       description: 'API Gateway URL',
     })
     if (domainName) {
       new cdk.CfnOutput(this, 'ApiDomainTarget', {
-        value: domainName.regionalDomainName,
+        value: domainName.domainNameAliasDomainName,
         description: 'CNAME target for custom domain (set in Cloudflare)',
       })
     }

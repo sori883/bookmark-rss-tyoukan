@@ -40,6 +40,11 @@ enum Commands {
         #[command(subcommand)]
         action: BookmarkAction,
     },
+    /// 接続先設定
+    Config {
+        #[command(subcommand)]
+        action: ConfigAction,
+    },
 }
 
 #[derive(clap::Subcommand)]
@@ -81,6 +86,21 @@ enum BookmarkAction {
     Search { keyword: String },
 }
 
+#[derive(clap::Subcommand)]
+enum ConfigAction {
+    /// 接続先URLを設定
+    Set {
+        /// API URL
+        #[arg(long)]
+        api_url: Option<String>,
+        /// Auth URL
+        #[arg(long)]
+        auth_url: Option<String>,
+    },
+    /// 現在の設定を表示
+    Show,
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     tracing_subscriber::fmt()
@@ -116,6 +136,21 @@ async fn main() -> Result<()> {
                 ArticleAction::Read { id } => commands::article::read(&api, &id).await,
             }
         }
+        Commands::Config { action } => {
+            match action {
+                ConfigAction::Set { api_url, auth_url } => {
+                    config::save_config(&app_config.config_dir, api_url.as_deref(), auth_url.as_deref())?;
+                    println!("Config saved.");
+                    Ok(())
+                }
+                ConfigAction::Show => {
+                    println!("api_url:    {}", app_config.api_url);
+                    println!("auth_url:   {}", app_config.auth_url);
+                    println!("config_dir: {}", app_config.config_dir.display());
+                    Ok(())
+                }
+            }
+        }
         Commands::Bookmark { action } => {
             let api = build_client(&app_config)?;
             match action {
@@ -148,7 +183,10 @@ Commands:
   bookmark add <target>                ブックマーク追加 (URL or 記事ID)
   bookmark remove <id>                 ブックマーク削除
   bookmark read <id>                   ブックマーク本文表示
-  bookmark search <keyword>            ブックマーク全文検索"
+  bookmark search <keyword>            ブックマーク全文検索
+  config show                          現在の設定を表示
+  config set --api-url <url>           API URLを設定
+  config set --auth-url <url>          Auth URLを設定"
     );
 }
 

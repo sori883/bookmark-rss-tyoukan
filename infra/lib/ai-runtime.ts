@@ -41,6 +41,7 @@ export function createAiRuntime(
       AI_CLIENT_ID: ssm.values['ai-client-id'],
       AI_CLIENT_SECRET: ssm.values['ai-client-secret'],
       BEDROCK_MODEL_ID: ssm.values['bedrock-model-id'],
+      WEB_ORIGIN: ssm.values['web-origin'],
     },
   })
 

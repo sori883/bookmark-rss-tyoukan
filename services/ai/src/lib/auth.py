@@ -22,7 +22,7 @@ class ServiceTokenManager:
         cache_margin_seconds: int = 300,
     ) -> None:
         self._http_client = http_client
-        self._auth_service_url = auth_service_url
+        self._auth_service_url = auth_service_url.rstrip('/')
         self._client_id = client_id
         self._client_secret = client_secret
         self._cache_margin_seconds = cache_margin_seconds

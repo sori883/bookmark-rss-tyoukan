@@ -1,10 +1,6 @@
-import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2'
+import * as apigateway from 'aws-cdk-lib/aws-apigateway'
 import * as acm from 'aws-cdk-lib/aws-certificatemanager'
-import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
-import {
-  HttpLambdaAuthorizer,
-  HttpLambdaResponseType,
-} from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
+import * as lambda from 'aws-cdk-lib/aws-lambda'
 import * as cdk from 'aws-cdk-lib'
 import type { Construct } from 'constructs'
 import type { LambdaFunctionsResult } from './lambda-functions'
@@ -19,12 +15,12 @@ export interface ApiGatewayProps {
 }
 
 export interface ApiGatewayResult {
-  readonly httpApi: apigwv2.HttpApi
-  readonly domainName?: apigwv2.DomainName
+  readonly restApi: apigateway.RestApi
+  readonly domainName?: apigateway.DomainName
 }
 
 /**
- * API Gateway HTTP API を作成し、各 Lambda にルーティングする
+ * API Gateway REST API を作成し、各 Lambda にルーティングする
  * 認証が必要なルートには Lambda Authorizer を適用する
  */
 export function createApiGateway(
@@ -33,21 +29,14 @@ export function createApiGateway(
 ): ApiGatewayResult {
   const { stage, prefix, lambdas, allowOrigins = ['*'], customDomain, certificateArn } = props
 
-  const domainMapping = customDomain && certificateArn
-    ? {
-        domainName: new apigwv2.DomainName(scope, 'ApiDomainName', {
-          domainName: customDomain,
-          certificate: acm.Certificate.fromCertificateArn(scope, 'ApiCertificate', certificateArn),
-        }),
-      }
-    : undefined
-
-  const httpApi = new apigwv2.HttpApi(scope, 'HttpApi', {
-    apiName: `${prefix}-api-${stage}`,
-    defaultDomainMapping: domainMapping,
-    corsPreflight: {
+  const restApi = new apigateway.RestApi(scope, 'RestApi', {
+    restApiName: `${prefix}-api-${stage}`,
+    deployOptions: {
+      stageName: stage,
+    },
+    defaultCorsPreflightOptions: {
       allowOrigins: [...allowOrigins],
-      allowMethods: [apigwv2.CorsHttpMethod.ANY],
+      allowMethods: apigateway.Cors.ALL_METHODS,
       allowHeaders: ['Content-Type', 'Authorization', 'Cookie'],
       exposeHeaders: ['Set-Cookie', 'set-auth-jwt'],
       allowCredentials: true,
@@ -55,99 +44,110 @@ export function createApiGateway(
   })
 
   // Lambda Authorizer
-  const authorizer = new HttpLambdaAuthorizer(
-    'JwtAuthorizer',
-    lambdas.authorizer,
-    {
-      responseTypes: [HttpLambdaResponseType.SIMPLE],
-      resultsCacheTtl: cdk.Duration.minutes(5),
-    },
-  )
+  const authorizer = new apigateway.RequestAuthorizer(scope, 'JwtAuthorizer', {
+    handler: lambdas.authorizer,
+    identitySources: [apigateway.IdentitySource.header('Authorization')],
+    resultsCacheTtl: cdk.Duration.minutes(5),
+    authorizerName: `${prefix}-jwt-authorizer-${stage}`,
+  })
 
-  const authIntegration = new HttpLambdaIntegration(
-    'AuthIntegration',
-    lambdas.auth,
-  )
-  const feedIntegration = new HttpLambdaIntegration(
-    'FeedIntegration',
-    lambdas.feed,
-  )
-  const notificationIntegration = new HttpLambdaIntegration(
-    'NotificationIntegration',
-    lambdas.notification,
-  )
+  // Lambda に API Gateway 全体の invoke 権限を一括付与（ポリシーサイズ上限回避）
+  grantApiInvoke(restApi, lambdas.auth, 'AuthApiPermission')
+  grantApiInvoke(restApi, lambdas.feed, 'FeedApiPermission')
+  grantApiInvoke(restApi, lambdas.notification, 'NotificationApiPermission')
+
+  const authIntegration = new apigateway.LambdaIntegration(lambdas.auth, {
+    allowTestInvoke: false,
+  })
+  const feedIntegration = new apigateway.LambdaIntegration(lambdas.feed, {
+    allowTestInvoke: false,
+  })
+  const notificationIntegration = new apigateway.LambdaIntegration(lambdas.notification, {
+    allowTestInvoke: false,
+  })
 
   // 認証不要: Auth routes
-  addRoute(httpApi, '/auth/{proxy+}', authIntegration)
+  const authResource = restApi.root.addResource('auth')
+  authResource.addProxy({
+    defaultIntegration: authIntegration,
+    anyMethod: true,
+  })
 
   // 認証不要: Health check
-  httpApi.addRoutes({
-    path: '/health',
-    methods: [apigwv2.HttpMethod.GET],
-    integration: feedIntegration,
-  })
+  const healthResource = restApi.root.addResource('health')
+  healthResource.addMethod('GET', feedIntegration)
 
-  // 認証必要: Feed routes
-  addProtectedRouteWithCollection(httpApi, '/feeds', feedIntegration, authorizer)
-  addProtectedRouteWithCollection(httpApi, '/articles', feedIntegration, authorizer)
-  addProtectedRouteWithCollection(httpApi, '/bookmarks', feedIntegration, authorizer)
-  addProtectedRoute(httpApi, '/settings', feedIntegration, authorizer)
+  // 認証必要: Feed routes（ANY + {proxy+} で統合）
+  addProtectedProxy(restApi, 'feeds', feedIntegration, authorizer)
+  addProtectedProxy(restApi, 'articles', feedIntegration, authorizer)
+  addProtectedProxy(restApi, 'bookmarks', feedIntegration, authorizer)
+
+  const settingsResource = restApi.root.addResource('settings')
+  settingsResource.addMethod('ANY', feedIntegration, {
+    authorizer,
+    authorizationType: apigateway.AuthorizationType.CUSTOM,
+  })
 
   // 認証必要: Notification routes
-  addProtectedRouteWithCollection(httpApi, '/notifications', notificationIntegration, authorizer)
+  addProtectedProxy(restApi, 'notifications', notificationIntegration, authorizer)
 
-  return { httpApi, domainName: domainMapping?.domainName }
+  // カスタムドメイン
+  let domainName: apigateway.DomainName | undefined
+  if (customDomain && certificateArn) {
+    domainName = new apigateway.DomainName(scope, 'ApiDomainName', {
+      domainName: customDomain,
+      certificate: acm.Certificate.fromCertificateArn(scope, 'ApiCertificate', certificateArn),
+      endpointType: apigateway.EndpointType.REGIONAL,
+      securityPolicy: apigateway.SecurityPolicy.TLS_1_2,
+    })
+
+    new apigateway.BasePathMapping(scope, 'ApiBasePathMapping', {
+      domainName,
+      restApi,
+      stage: restApi.deploymentStage,
+    })
+  }
+
+  return { restApi, domainName }
 }
 
-const ALL_METHODS = [
-  apigwv2.HttpMethod.GET,
-  apigwv2.HttpMethod.POST,
-  apigwv2.HttpMethod.PUT,
-  apigwv2.HttpMethod.DELETE,
-  apigwv2.HttpMethod.PATCH,
-]
-
 /**
- * 認証なしルート
+ * Lambda に API Gateway 全体の invoke 権限を付与
  */
-function addRoute(
-  httpApi: apigwv2.HttpApi,
-  path: string,
-  integration: HttpLambdaIntegration,
+function grantApiInvoke(
+  restApi: apigateway.RestApi,
+  fn: lambda.IFunction,
+  id: string,
 ): void {
-  httpApi.addRoutes({
-    path,
-    methods: ALL_METHODS,
-    integration,
+  fn.addPermission(id, {
+    principal: new cdk.aws_iam.ServicePrincipal('apigateway.amazonaws.com'),
+    sourceArn: restApi.arnForExecuteApi(),
   })
 }
 
 /**
- * 認証ありルート
+ * 認証ありプロキシリソース: /path(ANY) と /path/{proxy+}(ANY) を登録
  */
-function addProtectedRoute(
-  httpApi: apigwv2.HttpApi,
+function addProtectedProxy(
+  restApi: apigateway.RestApi,
   path: string,
-  integration: HttpLambdaIntegration,
-  authorizer: HttpLambdaAuthorizer,
+  integration: apigateway.LambdaIntegration,
+  authorizer: apigateway.RequestAuthorizer,
 ): void {
-  httpApi.addRoutes({
-    path,
-    methods: ALL_METHODS,
-    integration,
+  const resource = restApi.root.addResource(path)
+  resource.addMethod('ANY', integration, {
     authorizer,
+    authorizationType: apigateway.AuthorizationType.CUSTOM,
   })
-}
-
-/**
- * 認証ありコレクションルート: /path と /path/{proxy+} の両方を登録する
- */
-function addProtectedRouteWithCollection(
-  httpApi: apigwv2.HttpApi,
-  basePath: string,
-  integration: HttpLambdaIntegration,
-  authorizer: HttpLambdaAuthorizer,
-): void {
-  addProtectedRoute(httpApi, basePath, integration, authorizer)
-  addProtectedRoute(httpApi, `${basePath}/{proxy+}`, integration, authorizer)
+  resource.addProxy({
+    defaultIntegration: integration,
+    anyMethod: false,
+    defaultMethodOptions: {
+      authorizer,
+      authorizationType: apigateway.AuthorizationType.CUSTOM,
+    },
+  }).addMethod('ANY', integration, {
+    authorizer,
+    authorizationType: apigateway.AuthorizationType.CUSTOM,
+  })
 }

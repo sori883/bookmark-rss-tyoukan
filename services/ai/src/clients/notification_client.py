@@ -18,7 +18,7 @@ class NotificationClient:
         token_manager: ServiceTokenManager,
     ) -> None:
         self._http_client = http_client
-        self._base_url = base_url
+        self._base_url = base_url.rstrip('/')
         self._token_manager = token_manager
 
     async def send_digest(

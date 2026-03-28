@@ -28,7 +28,7 @@ class FeedClient:
         page_size: int = 100,
     ) -> None:
         self._http_client = http_client
-        self._base_url = base_url
+        self._base_url = base_url.rstrip('/')
         self._token_manager = token_manager
         self._page_size = page_size
 
