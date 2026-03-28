@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev --port 5173",
     "build": "vite build",
-    "start": "npx vite preview",
+    "start": "vite preview",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "lint": "eslint src/",
