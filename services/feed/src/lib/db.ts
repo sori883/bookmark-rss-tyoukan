@@ -6,7 +6,7 @@ const DATABASE_URL =
   process.env.DATABASE_URL ??
   'postgresql://bookmark:bookmark@localhost:5432/bookmark_rss'
 
-const client = postgres(DATABASE_URL)
+const client = postgres(DATABASE_URL, { prepare: false })
 
 export const db = drizzle(client, { schema })
 

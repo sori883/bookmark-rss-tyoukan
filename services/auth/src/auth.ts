@@ -35,6 +35,12 @@ export function createAuth(options: {
         clientSecret: options.googleClientSecret,
       },
     },
+    advanced: {
+      defaultCookieAttributes: {
+        sameSite: 'none',
+        secure: true,
+      },
+    },
     plugins: [
       jwt({
         jwks: {
