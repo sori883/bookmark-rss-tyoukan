@@ -53,3 +53,5 @@ e2e/.auth/
 cdk.out/
 .vercel/
 .output/
+.tanstack
+skills-lock.json.agents/

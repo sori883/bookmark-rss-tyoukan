@@ -34,11 +34,13 @@ export class BookmarkRssStack extends cdk.Stack {
     })
 
     // API Gateway HTTP API
-    const { httpApi } = createApiGateway(this, {
+    const { httpApi, domainName } = createApiGateway(this, {
       stage,
       prefix,
       lambdas: lambdaResult,
       allowOrigins: [ssm.values['web-origin']],
+      customDomain: ssm.values['api-domain'],
+      certificateArn: ssm.values['api-certificate-arn'],
     })
 
     // EventBridge Schedulers
@@ -54,6 +56,12 @@ export class BookmarkRssStack extends cdk.Stack {
       value: httpApi.url ?? '',
       description: 'API Gateway URL',
     })
+    if (domainName) {
+      new cdk.CfnOutput(this, 'ApiDomainTarget', {
+        value: domainName.regionalDomainName,
+        description: 'CNAME target for custom domain (set in Cloudflare)',
+      })
+    }
     new cdk.CfnOutput(this, 'AiRuntimeId', {
       value: ai.runtime.agentRuntimeId,
       description: 'AgentCore Runtime ID',

@@ -59,6 +59,9 @@ put_param GOOGLE_CLIENT_SECRET  google-client-secret
 put_param BETTER_AUTH_SECRET    better-auth-secret
 put_param BETTER_AUTH_URL       better-auth-url
 put_param WEB_ORIGIN            web-origin
+put_param API_DOMAIN             api-domain
+put_param API_CERTIFICATE_ARN   api-certificate-arn
+put_param COOKIE_DOMAIN          cookie-domain
 put_param AI_CLIENT_ID          ai-client-id
 put_param AI_CLIENT_SECRET      ai-client-secret
 put_param BEDROCK_MODEL_ID      bedrock-model-id

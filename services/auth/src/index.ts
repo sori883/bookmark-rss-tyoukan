@@ -22,6 +22,7 @@ export function buildApp() {
     googleClientSecret: config.GOOGLE_CLIENT_SECRET,
     secret: config.BETTER_AUTH_SECRET,
     baseURL: config.BETTER_AUTH_URL,
+    cookieDomain: config.COOKIE_DOMAIN,
     trustedOrigins: [
       config.WEB_ORIGIN,
       // CLI OAuth コールバック（ポート 18923〜18932）

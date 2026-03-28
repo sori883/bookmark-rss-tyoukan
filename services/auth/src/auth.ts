@@ -13,6 +13,7 @@ export function createAuth(options: {
   secret: string
   baseURL: string
   trustedOrigins: string[]
+  cookieDomain?: string
 }) {
   return betterAuth({
     database: drizzleAdapter(options.db, {
@@ -37,15 +38,14 @@ export function createAuth(options: {
     },
     advanced: {
       defaultCookieAttributes: {
-        sameSite: 'none',
+        sameSite: 'lax',
         secure: true,
+        ...(options.cookieDomain ? { domain: options.cookieDomain } : {}),
       },
       useSecureCookies: true,
     },
     account: {
       accountLinking: { enabled: true },
-      storeStateStrategy: 'database',
-      skipStateCookieCheck: true,
     },
     plugins: [
       jwt({

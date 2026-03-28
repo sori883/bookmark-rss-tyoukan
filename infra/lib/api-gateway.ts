@@ -1,4 +1,5 @@
 import * as apigwv2 from 'aws-cdk-lib/aws-apigatewayv2'
+import * as acm from 'aws-cdk-lib/aws-certificatemanager'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import {
   HttpLambdaAuthorizer,
@@ -13,10 +14,13 @@ export interface ApiGatewayProps {
   readonly prefix: string
   readonly lambdas: LambdaFunctionsResult
   readonly allowOrigins?: readonly string[]
+  readonly customDomain?: string
+  readonly certificateArn?: string
 }
 
 export interface ApiGatewayResult {
   readonly httpApi: apigwv2.HttpApi
+  readonly domainName?: apigwv2.DomainName
 }
 
 /**
@@ -27,10 +31,20 @@ export function createApiGateway(
   scope: Construct,
   props: ApiGatewayProps,
 ): ApiGatewayResult {
-  const { stage, prefix, lambdas, allowOrigins = ['*'] } = props
+  const { stage, prefix, lambdas, allowOrigins = ['*'], customDomain, certificateArn } = props
+
+  const domainMapping = customDomain && certificateArn
+    ? {
+        domainName: new apigwv2.DomainName(scope, 'ApiDomainName', {
+          domainName: customDomain,
+          certificate: acm.Certificate.fromCertificateArn(scope, 'ApiCertificate', certificateArn),
+        }),
+      }
+    : undefined
 
   const httpApi = new apigwv2.HttpApi(scope, 'HttpApi', {
     apiName: `${prefix}-api-${stage}`,
+    defaultDomainMapping: domainMapping,
     corsPreflight: {
       allowOrigins: [...allowOrigins],
       allowMethods: [apigwv2.CorsHttpMethod.ANY],
@@ -82,7 +96,7 @@ export function createApiGateway(
   // 認証必要: Notification routes
   addProtectedRouteWithCollection(httpApi, '/notifications', notificationIntegration, authorizer)
 
-  return { httpApi }
+  return { httpApi, domainName: domainMapping?.domainName }
 }
 
 const ALL_METHODS = [

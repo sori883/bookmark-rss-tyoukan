@@ -106,6 +106,7 @@ function createAuthFunction(
       BETTER_AUTH_SECRET: ssm.values['better-auth-secret'],
       BETTER_AUTH_URL: ssm.values['better-auth-url'],
       WEB_ORIGIN: ssm.values['web-origin'],
+      COOKIE_DOMAIN: ssm.values['cookie-domain'],
     },
   })
 }
