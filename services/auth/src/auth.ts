@@ -40,6 +40,12 @@ export function createAuth(options: {
         sameSite: 'none',
         secure: true,
       },
+      useSecureCookies: true,
+    },
+    account: {
+      accountLinking: { enabled: true },
+      storeStateStrategy: 'database',
+      skipStateCookieCheck: true,
     },
     plugins: [
       jwt({
