@@ -38,6 +38,7 @@ export class BookmarkRssStack extends cdk.Stack {
       stage,
       prefix,
       lambdas: lambdaResult,
+      allowOrigins: [ssm.values['web-origin']],
     })
 
     // EventBridge Schedulers
