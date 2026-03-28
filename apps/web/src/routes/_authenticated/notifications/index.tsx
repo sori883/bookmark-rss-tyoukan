@@ -1,6 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
+import { notificationsQueryOptions } from '~/hooks/use-notifications'
 import { NotificationList } from '~/components/notifications/notification-list'
+import { serverRequest } from '~/lib/server-fetcher'
+import { toQueryString } from '~/lib/api-client'
+import type { PaginatedResponse, NotificationResponse } from '~/types/api'
 
 const searchSchema = z.object({
   page: z.number().int().positive().optional().default(1),
@@ -8,6 +12,17 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/_authenticated/notifications/')({
   validateSearch: (search) => searchSchema.parse(search),
+  loaderDeps: ({ search }) => ({ page: search.page }),
+  loader: async ({ context: { queryClient, jwt }, deps }) => {
+    if (typeof window === 'undefined' && jwt) {
+      const data = await serverRequest<
+        PaginatedResponse<NotificationResponse>
+      >(`/notifications${toQueryString(deps)}`, jwt)
+      queryClient.setQueryData(['notifications', deps] as const, data)
+    } else {
+      await queryClient.ensureQueryData(notificationsQueryOptions(deps))
+    }
+  },
   component: NotificationsPage,
 })
 

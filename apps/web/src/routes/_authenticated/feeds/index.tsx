@@ -1,9 +1,20 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { feedsQueryOptions } from '~/hooks/use-feeds'
 import { FeedAddForm } from '~/components/feeds/feed-add-form'
 import { OpmlImport } from '~/components/feeds/opml-import'
 import { FeedList } from '~/components/feeds/feed-list'
+import { serverRequest } from '~/lib/server-fetcher'
+import type { FeedResponse } from '~/types/api'
 
 export const Route = createFileRoute('/_authenticated/feeds/')({
+  loader: async ({ context: { queryClient, jwt } }) => {
+    if (typeof window === 'undefined' && jwt) {
+      const data = await serverRequest<readonly FeedResponse[]>('/feeds', jwt)
+      queryClient.setQueryData(['feeds'] as const, data)
+    } else {
+      await queryClient.ensureQueryData(feedsQueryOptions)
+    }
+  },
   component: FeedsPage,
 })
 

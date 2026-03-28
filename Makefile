@@ -73,7 +73,7 @@ dev-stop:
 		done; \
 		rmdir $(PID_DIR) 2>/dev/null || true; \
 	fi
-	@pkill -f "tsx watch" 2>/dev/null || true
+	@pkill -f "tsx.*watch" 2>/dev/null || true
 	@pkill -f "uvicorn src.main:app" 2>/dev/null || true
 	@pkill -f "vinxi" 2>/dev/null || true
 	@for port in $(SERVICE_PORTS); do \

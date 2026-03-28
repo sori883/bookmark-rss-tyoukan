@@ -1,9 +1,13 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { Eye, EyeOff } from 'lucide-react'
 import { z } from 'zod'
-import { useFeeds } from '~/hooks/use-feeds'
+import { useFeeds, feedsQueryOptions } from '~/hooks/use-feeds'
+import { articlesQueryOptions } from '~/hooks/use-articles'
 import { ArticleList } from '~/components/articles/article-list'
 import { Select } from '~/components/ui/select'
+import { serverRequest } from '~/lib/server-fetcher'
+import { toQueryString } from '~/lib/api-client'
+import type { FeedResponse, PaginatedResponse, ArticleResponse } from '~/types/api'
 
 const searchSchema = z.object({
   feed_id: z.string().optional(),
@@ -13,6 +17,29 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/_authenticated/articles/')({
   validateSearch: (search) => searchSchema.parse(search),
+  loaderDeps: ({ search }) => ({
+    feed_id: search.feed_id,
+    is_read: search.is_read,
+    page: search.page,
+  }),
+  loader: async ({ context: { queryClient, jwt }, deps }) => {
+    if (typeof window === 'undefined' && jwt) {
+      const [feeds, articles] = await Promise.all([
+        serverRequest<readonly FeedResponse[]>('/feeds', jwt),
+        serverRequest<PaginatedResponse<ArticleResponse>>(
+          `/articles${toQueryString(deps)}`,
+          jwt,
+        ),
+      ])
+      queryClient.setQueryData(['feeds'] as const, feeds)
+      queryClient.setQueryData(['articles', deps] as const, articles)
+    } else {
+      await Promise.all([
+        queryClient.ensureQueryData(feedsQueryOptions),
+        queryClient.ensureQueryData(articlesQueryOptions(deps)),
+      ])
+    }
+  },
   component: ArticlesPage,
 })
 

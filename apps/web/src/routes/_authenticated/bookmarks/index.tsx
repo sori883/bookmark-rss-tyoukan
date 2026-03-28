@@ -1,10 +1,17 @@
 import { useState, useCallback } from 'react'
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
+import {
+  bookmarksQueryOptions,
+  searchBookmarksQueryOptions,
+} from '~/hooks/use-bookmarks'
 import { BookmarkList } from '~/components/bookmarks/bookmark-list'
 import { BookmarkSearch } from '~/components/bookmarks/bookmark-search'
 import { BookmarkAddForm } from '~/components/bookmarks/bookmark-add-form'
 import { Button } from '~/components/ui/button'
+import { serverRequest } from '~/lib/server-fetcher'
+import { toQueryString } from '~/lib/api-client'
+import type { PaginatedResponse, BookmarkResponse } from '~/types/api'
 
 const searchSchema = z.object({
   tab: z.enum(['list', 'search']).optional().default('list'),
@@ -14,6 +21,41 @@ const searchSchema = z.object({
 
 export const Route = createFileRoute('/_authenticated/bookmarks/')({
   validateSearch: (search) => searchSchema.parse(search),
+  loaderDeps: ({ search }) => ({
+    tab: search.tab,
+    q: search.q,
+    page: search.page,
+  }),
+  loader: async ({ context: { queryClient, jwt }, deps }) => {
+    if (deps.tab === 'search' && deps.q) {
+      const searchParams = { q: deps.q, page: deps.page }
+      if (typeof window === 'undefined' && jwt) {
+        const data = await serverRequest<PaginatedResponse<BookmarkResponse>>(
+          `/bookmarks/search${toQueryString(searchParams)}`,
+          jwt,
+        )
+        queryClient.setQueryData(
+          ['bookmarks', 'search', searchParams] as const,
+          data,
+        )
+      } else {
+        await queryClient.ensureQueryData(
+          searchBookmarksQueryOptions(searchParams),
+        )
+      }
+    } else {
+      const listParams = { page: deps.page }
+      if (typeof window === 'undefined' && jwt) {
+        const data = await serverRequest<PaginatedResponse<BookmarkResponse>>(
+          `/bookmarks${toQueryString(listParams)}`,
+          jwt,
+        )
+        queryClient.setQueryData(['bookmarks', listParams] as const, data)
+      } else {
+        await queryClient.ensureQueryData(bookmarksQueryOptions(listParams))
+      }
+    }
+  },
   component: BookmarksPage,
 })
 

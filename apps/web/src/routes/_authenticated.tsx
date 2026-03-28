@@ -1,58 +1,28 @@
-import { useEffect, useState } from 'react'
-import {
-  createFileRoute,
-  redirect,
-  Outlet,
-  useNavigate,
-} from '@tanstack/react-router'
-import { getSession } from '~/lib/auth'
+import { createFileRoute, redirect, Outlet } from '@tanstack/react-router'
+import { getServerSession } from '~/lib/server-auth'
+import { cacheJwt } from '~/lib/auth'
 import { AppLayout } from '~/components/layout/app-layout'
 import { Loading } from '~/components/ui/loading'
-import type { AuthUser } from '~/types/api'
 
 export const Route = createFileRoute('/_authenticated')({
   beforeLoad: async () => {
-    if (typeof window === 'undefined') {
-      return { user: null as AuthUser | null }
-    }
-    const session = await getSession()
+    const session = await getServerSession()
     if (!session) {
       throw redirect({ to: '/login' })
     }
-    return { user: session.user as AuthUser | null }
+    // クライアント側でのみ JWT キャッシュ（サーバーのグローバル変数汚染を防止）
+    if (typeof window !== 'undefined' && session.jwt) {
+      cacheJwt(session.jwt)
+    }
+    return { user: session.user, jwt: session.jwt }
   },
   component: AuthenticatedLayout,
 })
 
 function AuthenticatedLayout() {
-  const { user: initialUser } = Route.useRouteContext()
-  const [user, setUser] = useState<AuthUser | null>(initialUser)
-  const [checking, setChecking] = useState(!initialUser)
-  const navigate = useNavigate()
+  const { user } = Route.useRouteContext()
 
-  useEffect(() => {
-    if (initialUser) {
-      setUser(initialUser)
-      setChecking(false)
-      return
-    }
-    getSession()
-      .then((session) => {
-        if (session) {
-          setUser(session.user)
-        } else {
-          navigate({ to: '/login' })
-        }
-      })
-      .catch(() => {
-        navigate({ to: '/login' })
-      })
-      .finally(() => {
-        setChecking(false)
-      })
-  }, [initialUser, navigate])
-
-  if (checking || !user) {
+  if (!user) {
     return <Loading fullScreen />
   }
 

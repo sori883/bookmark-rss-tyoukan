@@ -29,7 +29,7 @@ export async function startGoogleOAuth(callbackURL: string): Promise<void> {
 const DEFAULT_JWT_EXPIRY_SECONDS = 3600
 const CACHE_MARGIN_RATIO = 0.8
 
-function cacheJwt(token: string): void {
+export function cacheJwt(token: string): void {
   jwtCache = {
     token,
     expiresAt: Date.now() + DEFAULT_JWT_EXPIRY_SECONDS * 1000 * CACHE_MARGIN_RATIO,

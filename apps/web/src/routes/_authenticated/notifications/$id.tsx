@@ -1,12 +1,39 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect } from 'react'
-import { useNotifications, useMarkNotificationRead } from '~/hooks/use-notifications'
+import {
+  useNotifications,
+  useMarkNotificationRead,
+  notificationsQueryOptions,
+} from '~/hooks/use-notifications'
 import { DigestCardList } from '~/components/notifications/digest-card-list'
 import { MarkdownViewer } from '~/components/bookmarks/markdown-viewer'
 import { Loading } from '~/components/ui/loading'
 import { ErrorMessage } from '~/components/ui/error-message'
+import { serverRequest } from '~/lib/server-fetcher'
+import { toQueryString } from '~/lib/api-client'
+import type { PaginatedResponse, NotificationResponse } from '~/types/api'
+
+const NOTIFICATION_DETAIL_PARAMS = { limit: 100 }
 
 export const Route = createFileRoute('/_authenticated/notifications/$id')({
+  loader: async ({ context: { queryClient, jwt } }) => {
+    if (typeof window === 'undefined' && jwt) {
+      const data = await serverRequest<
+        PaginatedResponse<NotificationResponse>
+      >(
+        `/notifications${toQueryString(NOTIFICATION_DETAIL_PARAMS)}`,
+        jwt,
+      )
+      queryClient.setQueryData(
+        ['notifications', NOTIFICATION_DETAIL_PARAMS] as const,
+        data,
+      )
+    } else {
+      await queryClient.ensureQueryData(
+        notificationsQueryOptions(NOTIFICATION_DETAIL_PARAMS),
+      )
+    }
+  },
   component: NotificationDetailPage,
 })
 

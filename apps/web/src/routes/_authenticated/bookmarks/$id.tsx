@@ -1,11 +1,24 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import { useBookmark } from '~/hooks/use-bookmarks'
+import { useBookmark, bookmarkQueryOptions } from '~/hooks/use-bookmarks'
 import { MarkdownViewer } from '~/components/bookmarks/markdown-viewer'
 import { Loading } from '~/components/ui/loading'
 import { ErrorMessage } from '~/components/ui/error-message'
 import { Button } from '~/components/ui/button'
+import { serverRequest } from '~/lib/server-fetcher'
+import type { BookmarkResponse } from '~/types/api'
 
 export const Route = createFileRoute('/_authenticated/bookmarks/$id')({
+  loader: async ({ context: { queryClient, jwt }, params: { id } }) => {
+    if (typeof window === 'undefined' && jwt) {
+      const data = await serverRequest<BookmarkResponse>(
+        `/bookmarks/${encodeURIComponent(id)}`,
+        jwt,
+      )
+      queryClient.setQueryData(['bookmarks', 'detail', id] as const, data)
+    } else {
+      await queryClient.ensureQueryData(bookmarkQueryOptions(id))
+    }
+  },
   component: BookmarkDetailPage,
 })
 

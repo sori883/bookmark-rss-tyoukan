@@ -29,7 +29,7 @@ class ApiError extends Error {
   }
 }
 
-function resolveBaseUrl(path: string): string {
+export function resolveBaseUrl(path: string): string {
   if (path.startsWith('/notifications')) {
     return NOTIFICATION_BASE_URL
   }
@@ -84,7 +84,7 @@ async function request<T>(
   return res.json() as Promise<T>
 }
 
-function toQueryString(params: Record<string, unknown>): string {
+export function toQueryString(params: Record<string, unknown>): string {
   const entries = Object.entries(params).filter(
     ([, v]) => v !== undefined && v !== null && v !== '',
   )
