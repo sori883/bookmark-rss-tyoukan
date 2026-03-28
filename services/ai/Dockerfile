@@ -13,4 +13,4 @@ RUN uv sync --locked
 ENV UV_CACHE_DIR=/tmp/uv-cache
 ENV PORT=8080
 
-CMD ["uv", "run", "python", "-m", "src.agentcore_entry"]
+CMD ["uv", "run", "agentcore_main.py"]
