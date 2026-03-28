@@ -5,7 +5,7 @@ import { BookmarkRssStack } from '../lib/bookmark-rss-stack'
 const app = new cdk.App()
 const stage = app.node.tryGetContext('stage') ?? 'dev'
 
-new BookmarkRssStack(app, `BookmarkRss-${stage}`, {
+new BookmarkRssStack(app, `BookmarkRssV2-${stage}`, {
   stage,
   env: {
     account: process.env.CDK_DEFAULT_ACCOUNT,
