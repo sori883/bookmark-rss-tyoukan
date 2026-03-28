@@ -44,7 +44,7 @@ export class BookmarkRssStack extends cdk.Stack {
     createSchedulers(this, {
       stage,
       prefix,
-      feedFunctionUrl: lambdaResult.urls.feed,
+      feedFunctionArn: lambdaResult.feed.functionArn,
       aiEndpointArn: ai.endpoint.agentRuntimeEndpointArn,
     })
 

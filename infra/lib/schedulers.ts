@@ -5,7 +5,7 @@ import type { Construct } from 'constructs'
 export interface SchedulersProps {
   readonly stage: string
   readonly prefix: string
-  readonly feedFunctionUrl: string
+  readonly feedFunctionArn: string
   readonly aiEndpointArn: string
 }
 
@@ -20,7 +20,7 @@ export function createSchedulers(
 ): void {
   const { stage, prefix } = props
 
-  createFeedFetchScheduler(scope, prefix, stage, props.feedFunctionUrl)
+  createFeedFetchScheduler(scope, prefix, stage, props.feedFunctionArn)
   createAiDigestScheduler(scope, prefix, stage, props.aiEndpointArn)
 }
 
@@ -28,7 +28,7 @@ function createFeedFetchScheduler(
   scope: Construct,
   prefix: string,
   stage: string,
-  feedFunctionUrl: string,
+  feedFunctionArn: string,
 ): void {
   const schedulerRole = new iam.Role(scope, 'FeedFetchSchedulerRole', {
     roleName: `${prefix}-feed-fetch-scheduler-${stage}`,
@@ -37,8 +37,8 @@ function createFeedFetchScheduler(
 
   schedulerRole.addToPolicy(
     new iam.PolicyStatement({
-      actions: ['lambda:InvokeFunctionUrl'],
-      resources: ['*'],
+      actions: ['lambda:InvokeFunction'],
+      resources: [feedFunctionArn],
     }),
   )
 
@@ -47,12 +47,12 @@ function createFeedFetchScheduler(
     scheduleExpression: 'rate(30 minutes)',
     flexibleTimeWindow: { mode: 'OFF' },
     target: {
-      arn: 'arn:aws:scheduler:::aws-sdk:lambda:invokeFunctionUrl',
+      arn: feedFunctionArn,
       roleArn: schedulerRole.roleArn,
       input: JSON.stringify({
-        Url: `${feedFunctionUrl}feeds/fetch`,
-        HttpMethod: 'POST',
-        InvocationType: 'BUFFERED_RESPONSE',
+        path: '/feeds/fetch',
+        httpMethod: 'POST',
+        body: '{}',
       }),
     },
   })
