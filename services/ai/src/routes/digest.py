@@ -32,7 +32,14 @@ BOOKMARK_LIMIT = 50
 async def run_digest(request: Request, body: DigestRequest) -> DigestResponse:
     feed_client: FeedClient = request.app.state.feed_client
     notification_client: NotificationClient = request.app.state.notification_client
+    return await execute_digest(feed_client, notification_client, body)
 
+
+async def execute_digest(
+    feed_client: FeedClient,
+    notification_client: NotificationClient,
+    body: DigestRequest,
+) -> DigestResponse:
     since = body.since or _default_since()
     logger.info("digest_started", since=since.isoformat())
 

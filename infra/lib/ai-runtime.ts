@@ -26,21 +26,13 @@ export function createAiRuntime(
 ): AiRuntimeResult {
   const { stage, ssm } = props
 
-  const artifact = agentcore.AgentRuntimeArtifact.fromCodeAsset({
-    path: path.join(__dirname, '../../services/ai'),
-    runtime: agentcore.AgentCoreRuntime.PYTHON_3_12,
-    entrypoint: [
-      'sh',
-      '-c uvicorn src.main:app --host 0.0.0.0 --port 8080',
-    ],
-  })
+  const artifact = agentcore.AgentRuntimeArtifact.fromAsset(
+    path.join(__dirname, '../../services/ai'),
+  )
 
   const runtime = new agentcore.Runtime(scope, 'AiRuntime', {
     runtimeName: `bookmark_rss_ai_${stage}`,
     agentRuntimeArtifact: artifact,
-    networkConfiguration:
-      agentcore.RuntimeNetworkConfiguration.usingPublicNetwork(),
-    protocolConfiguration: agentcore.ProtocolType.HTTP,
     environmentVariables: {
       AUTH_SERVICE_URL: props.authServiceUrl,
       FEED_SERVICE_URL: props.feedServiceUrl,
