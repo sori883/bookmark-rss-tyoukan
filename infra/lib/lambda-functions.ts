@@ -44,6 +44,7 @@ function baseNodejsProps(
       sourceMap: true,
       target: 'node22',
       format: OutputFormat.ESM,
+      banner: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
     },
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
@@ -158,6 +159,7 @@ function createAuthorizerFunction(
       sourceMap: true,
       target: 'node22',
       format: OutputFormat.ESM,
+      banner: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
     },
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
