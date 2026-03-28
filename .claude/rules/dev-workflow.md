@@ -9,7 +9,6 @@
 | project 名 | 対象 |
 |---|---|
 | auth | services/auth |
-| bff | services/bff |
 | feed | services/feed |
 | ai | services/ai |
 | notification | services/notification |
