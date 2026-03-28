@@ -6,6 +6,7 @@ import type { SsmParams } from './ssm-params'
 
 export interface AiRuntimeProps {
   readonly stage: string
+  readonly prefix: string
   readonly ssm: SsmParams
   readonly authServiceUrl: string
   readonly feedServiceUrl: string
@@ -24,14 +25,14 @@ export function createAiRuntime(
   scope: Construct,
   props: AiRuntimeProps,
 ): AiRuntimeResult {
-  const { stage, ssm } = props
+  const { stage, prefix, ssm } = props
 
   const artifact = agentcore.AgentRuntimeArtifact.fromAsset(
     path.join(__dirname, '../../services/ai'),
   )
 
   const runtime = new agentcore.Runtime(scope, 'AiRuntime', {
-    runtimeName: `bookmark_rss_ai_${stage}`,
+    runtimeName: `${prefix.replace(/-/g, '_')}_ai_${stage}`,
     agentRuntimeArtifact: artifact,
     environmentVariables: {
       AUTH_SERVICE_URL: props.authServiceUrl,
@@ -56,7 +57,7 @@ export function createAiRuntime(
 
   // エンドポイントを作成
   const endpoint = runtime.addEndpoint(
-    `bookmark_rss_ai_ep_${stage}`,
+    `${prefix.replace(/-/g, '_')}_ai_ep_${stage}`,
   )
 
   return { runtime, endpoint }

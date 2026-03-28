@@ -1,10 +1,10 @@
-import * as cdk from 'aws-cdk-lib'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as scheduler from 'aws-cdk-lib/aws-scheduler'
 import type { Construct } from 'constructs'
 
 export interface SchedulersProps {
   readonly stage: string
+  readonly prefix: string
   readonly feedFunctionUrl: string
   readonly aiEndpointArn: string
 }
@@ -18,24 +18,23 @@ export function createSchedulers(
   scope: Construct,
   props: SchedulersProps,
 ): void {
-  const { stage } = props
+  const { stage, prefix } = props
 
-  createFeedFetchScheduler(scope, stage, props.feedFunctionUrl)
-  createAiDigestScheduler(scope, stage, props.aiEndpointArn)
+  createFeedFetchScheduler(scope, prefix, stage, props.feedFunctionUrl)
+  createAiDigestScheduler(scope, prefix, stage, props.aiEndpointArn)
 }
 
 function createFeedFetchScheduler(
   scope: Construct,
+  prefix: string,
   stage: string,
   feedFunctionUrl: string,
 ): void {
   const schedulerRole = new iam.Role(scope, 'FeedFetchSchedulerRole', {
-    roleName: `bookmark-rss-feed-fetch-scheduler-${stage}`,
+    roleName: `${prefix}-feed-fetch-scheduler-${stage}`,
     assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
   })
 
-  // Universal Target の場合、API 呼び出し権限は不要
-  // Lambda Function URL への HTTP リクエストなので invoke 権限が必要
   schedulerRole.addToPolicy(
     new iam.PolicyStatement({
       actions: ['lambda:InvokeFunctionUrl'],
@@ -44,7 +43,7 @@ function createFeedFetchScheduler(
   )
 
   new scheduler.CfnSchedule(scope, 'FeedFetchSchedule', {
-    name: `bookmark-rss-feed-fetch-${stage}`,
+    name: `${prefix}-feed-fetch-${stage}`,
     scheduleExpression: 'rate(30 minutes)',
     flexibleTimeWindow: { mode: 'OFF' },
     target: {
@@ -61,11 +60,12 @@ function createFeedFetchScheduler(
 
 function createAiDigestScheduler(
   scope: Construct,
+  prefix: string,
   stage: string,
   aiEndpointArn: string,
 ): void {
   const schedulerRole = new iam.Role(scope, 'AiDigestSchedulerRole', {
-    roleName: `bookmark-rss-ai-digest-scheduler-${stage}`,
+    roleName: `${prefix}-ai-digest-scheduler-${stage}`,
     assumedBy: new iam.ServicePrincipal('scheduler.amazonaws.com'),
   })
 
@@ -77,8 +77,7 @@ function createAiDigestScheduler(
   )
 
   new scheduler.CfnSchedule(scope, 'AiDigestSchedule', {
-    name: `bookmark-rss-ai-digest-${stage}`,
-    // 毎時0分に実行、AIサービス側でユーザーの notification_hour (JST) と比較
+    name: `${prefix}-ai-digest-${stage}`,
     scheduleExpression: 'cron(0 * * * ? *)',
     scheduleExpressionTimezone: 'Asia/Tokyo',
     flexibleTimeWindow: { mode: 'OFF' },

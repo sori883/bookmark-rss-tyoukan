@@ -7,6 +7,7 @@ import type { SsmParams } from './ssm-params'
 
 export interface LambdaFunctionsProps {
   readonly stage: string
+  readonly prefix: string
   readonly ssm: SsmParams
 }
 
@@ -27,11 +28,12 @@ export interface LambdaFunctionsResult {
  */
 function baseNodejsProps(
   serviceName: string,
+  prefix: string,
   stage: string,
   memorySize: number,
 ): Partial<ConstructorParameters<typeof NodejsFunction>[2]> {
   return {
-    functionName: `bookmark-rss-${serviceName}-${stage}`,
+    functionName: `${prefix}-${serviceName}-${stage}`,
     entry: path.join(__dirname, `../../services/${serviceName}/src/lambda.ts`),
     handler: 'handler',
     runtime: lambda.Runtime.NODEJS_22_X,
@@ -50,19 +52,18 @@ function baseNodejsProps(
 }
 
 /**
- * 3 つの TypeScript Lambda 関数を作成する
- * 環境変数のサービス間 URL は後から addEnvironment() で追加する（循環参照回避）
+ * 3 つの TypeScript Lambda 関数 + Authorizer を作成する
  */
 export function createLambdaFunctions(
   scope: Construct,
   props: LambdaFunctionsProps,
 ): LambdaFunctionsResult {
-  const { stage, ssm } = props
+  const { stage, prefix, ssm } = props
 
-  const auth = createAuthFunction(scope, stage, ssm)
-  const feed = createFeedFunction(scope, stage, ssm)
-  const notification = createNotificationFunction(scope, stage, ssm)
-  const authorizer = createAuthorizerFunction(scope, stage)
+  const auth = createAuthFunction(scope, prefix, stage, ssm)
+  const feed = createFeedFunction(scope, prefix, stage, ssm)
+  const notification = createNotificationFunction(scope, prefix, stage, ssm)
+  const authorizer = createAuthorizerFunction(scope, prefix, stage)
 
   // Function URL を有効化（IAM 認証なし）
   const authUrl = auth.addFunctionUrl({ authType: lambda.FunctionUrlAuthType.NONE })
@@ -90,11 +91,12 @@ export function createLambdaFunctions(
 
 function createAuthFunction(
   scope: Construct,
+  prefix: string,
   stage: string,
   ssm: SsmParams,
 ): NodejsFunction {
   return new NodejsFunction(scope, 'AuthFunction', {
-    ...baseNodejsProps('auth', stage, 256),
+    ...baseNodejsProps('auth', prefix, stage, 256),
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
       DATABASE_URL: ssm.values['database-url'],
@@ -109,11 +111,12 @@ function createAuthFunction(
 
 function createFeedFunction(
   scope: Construct,
+  prefix: string,
   stage: string,
   ssm: SsmParams,
 ): NodejsFunction {
   return new NodejsFunction(scope, 'FeedFunction', {
-    ...baseNodejsProps('feed', stage, 512),
+    ...baseNodejsProps('feed', prefix, stage, 512),
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
       DATABASE_URL: ssm.values['database-url'],
@@ -124,11 +127,12 @@ function createFeedFunction(
 
 function createNotificationFunction(
   scope: Construct,
+  prefix: string,
   stage: string,
   ssm: SsmParams,
 ): NodejsFunction {
   return new NodejsFunction(scope, 'NotificationFunction', {
-    ...baseNodejsProps('notification', stage, 256),
+    ...baseNodejsProps('notification', prefix, stage, 256),
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
       DATABASE_URL: ssm.values['database-url'],
@@ -139,10 +143,11 @@ function createNotificationFunction(
 
 function createAuthorizerFunction(
   scope: Construct,
+  prefix: string,
   stage: string,
 ): NodejsFunction {
   return new NodejsFunction(scope, 'AuthorizerFunction', {
-    functionName: `bookmark-rss-authorizer-${stage}`,
+    functionName: `${prefix}-authorizer-${stage}`,
     entry: path.join(__dirname, '../functions/jwt-authorizer.ts'),
     handler: 'handler',
     runtime: lambda.Runtime.NODEJS_22_X,

@@ -10,6 +10,7 @@ import type { LambdaFunctionsResult } from './lambda-functions'
 
 export interface ApiGatewayProps {
   readonly stage: string
+  readonly prefix: string
   readonly lambdas: LambdaFunctionsResult
   readonly allowOrigins?: readonly string[]
 }
@@ -26,10 +27,10 @@ export function createApiGateway(
   scope: Construct,
   props: ApiGatewayProps,
 ): ApiGatewayResult {
-  const { stage, lambdas, allowOrigins = ['*'] } = props
+  const { stage, prefix, lambdas, allowOrigins = ['*'] } = props
 
   const httpApi = new apigwv2.HttpApi(scope, 'HttpApi', {
-    apiName: `bookmark-rss-api-${stage}`,
+    apiName: `${prefix}-api-${stage}`,
     corsPreflight: {
       allowOrigins: [...allowOrigins],
       allowMethods: [apigwv2.CorsHttpMethod.ANY],

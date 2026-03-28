@@ -8,23 +8,25 @@ import { createSchedulers } from './schedulers'
 
 export interface BookmarkRssStackProps extends cdk.StackProps {
   readonly stage: string
+  readonly prefix: string
 }
 
 export class BookmarkRssStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: BookmarkRssStackProps) {
     super(scope, id, props)
 
-    const { stage } = props
+    const { stage, prefix } = props
 
     // SSM パラメータ参照（値はユーザーが手動設定済み前提）
     const ssm = lookupSsmParams(this, stage)
 
     // Lambda Functions (auth, feed, notification)
-    const lambdaResult = createLambdaFunctions(this, { stage, ssm })
+    const lambdaResult = createLambdaFunctions(this, { stage, prefix, ssm })
 
     // AgentCore Runtime (ai)
     const ai = createAiRuntime(this, {
       stage,
+      prefix,
       ssm,
       authServiceUrl: lambdaResult.urls.auth,
       feedServiceUrl: lambdaResult.urls.feed,
@@ -34,12 +36,14 @@ export class BookmarkRssStack extends cdk.Stack {
     // API Gateway HTTP API
     const { httpApi } = createApiGateway(this, {
       stage,
+      prefix,
       lambdas: lambdaResult,
     })
 
     // EventBridge Schedulers
     createSchedulers(this, {
       stage,
+      prefix,
       feedFunctionUrl: lambdaResult.urls.feed,
       aiEndpointArn: ai.endpoint.agentRuntimeEndpointArn,
     })
