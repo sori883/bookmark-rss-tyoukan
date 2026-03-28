@@ -71,7 +71,6 @@ export function createLambdaFunctions(
 
   // サービス間 URL を環境変数に追加
   const jwksUrl = cdk.Fn.join('', [authUrl.url, 'auth/.well-known/jwks.json'])
-  addServiceUrls(auth, { AUTH_SERVICE_URL: authUrl.url })
   addServiceUrls(feed, { AUTH_JWKS_URL: jwksUrl })
   addServiceUrls(notification, { AUTH_JWKS_URL: jwksUrl })
   addServiceUrls(authorizer, { AUTH_JWKS_URL: jwksUrl })
