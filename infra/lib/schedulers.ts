@@ -21,8 +21,7 @@ export function createSchedulers(
   const { stage, prefix } = props
 
   createFeedFetchScheduler(scope, prefix, stage, props.feedFunctionArn)
-  // TODO: EventBridge Scheduler Universal TargetでAgentCoreが未対応。コンソールから手動設定 or Proxy Lambda経由で対応予定。
-  // createAiDigestScheduler(scope, prefix, stage, props.aiRuntimeArn)
+  createAiDigestScheduler(scope, prefix, stage, props.aiRuntimeArn)
 }
 
 function createFeedFetchScheduler(
@@ -72,7 +71,10 @@ function createAiDigestScheduler(
 
   schedulerRole.addToPolicy(
     new iam.PolicyStatement({
-      actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+      actions: [
+        'bedrock-agentcore:InvokeAgentRuntime',
+        'bedrock-agentcore:InvokeAgentRuntimeForUser',
+      ],
       resources: [
         aiRuntimeArn,
         `${aiRuntimeArn}/runtime-endpoint/DEFAULT`,
@@ -86,10 +88,11 @@ function createAiDigestScheduler(
     scheduleExpressionTimezone: 'Asia/Tokyo',
     flexibleTimeWindow: { mode: 'OFF' },
     target: {
-      arn: 'arn:aws:scheduler:::aws-sdk:bedrock-agentcore:invokeAgentRuntime',
+      arn: 'arn:aws:scheduler:::aws-sdk:bedrockagentcore:invokeAgentRuntime',
       roleArn: schedulerRole.roleArn,
       input: JSON.stringify({
         AgentRuntimeArn: aiRuntimeArn,
+        RuntimeUserId: 'scheduler-agent',
         Payload: '{}',
       }),
     },
