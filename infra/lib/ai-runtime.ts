@@ -1,5 +1,4 @@
 import * as path from 'node:path'
-import * as cdk from 'aws-cdk-lib'
 import * as iam from 'aws-cdk-lib/aws-iam'
 import * as agentcore from '@aws-cdk/aws-bedrock-agentcore-alpha'
 import type { Construct } from 'constructs'
@@ -48,7 +47,7 @@ export function createAiRuntime(
       NOTIFICATION_SERVICE_URL: props.notificationServiceUrl,
       AI_CLIENT_ID: ssm.values['ai-client-id'],
       AI_CLIENT_SECRET: ssm.values['ai-client-secret'],
-      BEDROCK_MODEL_ID: 'global.anthropic.claude-haiku-4-5-20251001-v1:0',
+      BEDROCK_MODEL_ID: ssm.values['bedrock-model-id'],
     },
   })
 

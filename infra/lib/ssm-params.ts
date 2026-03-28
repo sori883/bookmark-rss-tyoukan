@@ -14,6 +14,7 @@ const PARAM_KEYS = [
   'web-origin',
   'ai-client-id',
   'ai-client-secret',
+  'bedrock-model-id',
 ] as const
 
 export type SsmParamKey = (typeof PARAM_KEYS)[number]

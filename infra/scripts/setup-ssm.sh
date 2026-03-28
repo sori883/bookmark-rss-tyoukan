@@ -61,6 +61,7 @@ put_param BETTER_AUTH_URL       better-auth-url
 put_param WEB_ORIGIN            web-origin
 put_param AI_CLIENT_ID          ai-client-id
 put_param AI_CLIENT_SECRET      ai-client-secret
+put_param BEDROCK_MODEL_ID      bedrock-model-id
 
 echo ""
 echo "Done. SSM parameters set for stage: $STAGE"
