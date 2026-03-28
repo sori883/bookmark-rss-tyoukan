@@ -102,6 +102,8 @@ function createAuthFunction(
       GOOGLE_CLIENT_ID: ssm.values['google-client-id'],
       GOOGLE_CLIENT_SECRET: ssm.values['google-client-secret'],
       BETTER_AUTH_SECRET: ssm.values['better-auth-secret'],
+      BETTER_AUTH_URL: ssm.values['better-auth-url'],
+      WEB_ORIGIN: ssm.values['web-origin'],
     },
   })
 }
@@ -116,6 +118,7 @@ function createFeedFunction(
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
       DATABASE_URL: ssm.values['database-url'],
+      WEB_ORIGIN: ssm.values['web-origin'],
     },
   })
 }
@@ -130,6 +133,7 @@ function createNotificationFunction(
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
       DATABASE_URL: ssm.values['database-url'],
+      WEB_ORIGIN: ssm.values['web-origin'],
     },
   })
 }

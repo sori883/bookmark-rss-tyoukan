@@ -16,7 +16,7 @@ export type AuthVariables = {
 }
 
 const JWKS_URL =
-  process.env.JWKS_URL ?? 'http://localhost:3000/auth/.well-known/jwks.json'
+  process.env.AUTH_JWKS_URL ?? process.env.JWKS_URL ?? 'http://localhost:3000/auth/.well-known/jwks.json'
 
 const JWKS = createRemoteJWKSet(new URL(JWKS_URL))
 

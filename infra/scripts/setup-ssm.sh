@@ -21,6 +21,8 @@ if [ ! -f "$ENV_FILE" ]; then
   echo "  GOOGLE_CLIENT_ID=xxx"
   echo "  GOOGLE_CLIENT_SECRET=xxx"
   echo "  BETTER_AUTH_SECRET=xxx"
+  echo "  BETTER_AUTH_URL=https://xxx.execute-api.ap-northeast-1.amazonaws.com"
+  echo "  WEB_ORIGIN=https://your-app.vercel.app"
   echo "  AI_CLIENT_ID=xxx"
   echo "  AI_CLIENT_SECRET=xxx"
   exit 1
@@ -55,6 +57,8 @@ put_param DATABASE_URL          database-url
 put_param GOOGLE_CLIENT_ID      google-client-id
 put_param GOOGLE_CLIENT_SECRET  google-client-secret
 put_param BETTER_AUTH_SECRET    better-auth-secret
+put_param BETTER_AUTH_URL       better-auth-url
+put_param WEB_ORIGIN            web-origin
 put_param AI_CLIENT_ID          ai-client-id
 put_param AI_CLIENT_SECRET      ai-client-secret
 

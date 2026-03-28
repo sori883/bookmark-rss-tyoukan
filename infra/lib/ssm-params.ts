@@ -10,6 +10,8 @@ const PARAM_KEYS = [
   'google-client-id',
   'google-client-secret',
   'better-auth-secret',
+  'better-auth-url',
+  'web-origin',
   'ai-client-id',
   'ai-client-secret',
 ] as const
