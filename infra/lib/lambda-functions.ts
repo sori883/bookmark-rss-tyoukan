@@ -1,6 +1,7 @@
 import * as path from 'node:path'
 import * as cdk from 'aws-cdk-lib'
 import * as lambda from 'aws-cdk-lib/aws-lambda'
+import * as logs from 'aws-cdk-lib/aws-logs'
 import { NodejsFunction, OutputFormat } from 'aws-cdk-lib/aws-lambda-nodejs'
 import type { Construct } from 'constructs'
 import type { SsmParams } from './ssm-params'
@@ -46,6 +47,7 @@ function baseNodejsProps(
       format: OutputFormat.ESM,
       banner: "import { createRequire } from 'module'; const require = createRequire(import.meta.url);",
     },
+    logRetention: logs.RetentionDays.ONE_WEEK,
     environment: {
       NODE_OPTIONS: '--enable-source-maps',
     },
@@ -155,6 +157,7 @@ function createAuthorizerFunction(
     runtime: lambda.Runtime.NODEJS_22_X,
     memorySize: 128,
     timeout: cdk.Duration.seconds(10),
+    logRetention: logs.RetentionDays.ONE_WEEK,
     bundling: {
       minify: true,
       sourceMap: true,
