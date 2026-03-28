@@ -21,7 +21,8 @@ export function createSchedulers(
   const { stage, prefix } = props
 
   createFeedFetchScheduler(scope, prefix, stage, props.feedFunctionArn)
-  createAiDigestScheduler(scope, prefix, stage, props.aiRuntimeArn)
+  // TODO: EventBridge Scheduler Universal TargetでAgentCoreが未対応。コンソールから手動設定 or Proxy Lambda経由で対応予定。
+  // createAiDigestScheduler(scope, prefix, stage, props.aiRuntimeArn)
 }
 
 function createFeedFetchScheduler(
