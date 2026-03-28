@@ -6,7 +6,7 @@ export interface SchedulersProps {
   readonly stage: string
   readonly prefix: string
   readonly feedFunctionArn: string
-  readonly aiEndpointArn: string
+  readonly aiRuntimeArn: string
 }
 
 /**
@@ -21,8 +21,7 @@ export function createSchedulers(
   const { stage, prefix } = props
 
   createFeedFetchScheduler(scope, prefix, stage, props.feedFunctionArn)
-  // TODO: AgentCoreはEventBridge Schedulerの直接ターゲット非対応。Lambda経由で呼び出す方式に変更予定。
-  // createAiDigestScheduler(scope, prefix, stage, props.aiEndpointArn)
+  createAiDigestScheduler(scope, prefix, stage, props.aiRuntimeArn)
 }
 
 function createFeedFetchScheduler(
@@ -63,7 +62,7 @@ function createAiDigestScheduler(
   scope: Construct,
   prefix: string,
   stage: string,
-  aiEndpointArn: string,
+  aiRuntimeArn: string,
 ): void {
   const schedulerRole = new iam.Role(scope, 'AiDigestSchedulerRole', {
     roleName: `${prefix}-ai-digest-scheduler-${stage}`,
@@ -72,8 +71,11 @@ function createAiDigestScheduler(
 
   schedulerRole.addToPolicy(
     new iam.PolicyStatement({
-      actions: ['bedrock-agentcore:InvokeRuntimeEndpoint'],
-      resources: [aiEndpointArn],
+      actions: ['bedrock-agentcore:InvokeAgentRuntime'],
+      resources: [
+        aiRuntimeArn,
+        `${aiRuntimeArn}/runtime-endpoint/DEFAULT`,
+      ],
     }),
   )
 
@@ -83,12 +85,11 @@ function createAiDigestScheduler(
     scheduleExpressionTimezone: 'Asia/Tokyo',
     flexibleTimeWindow: { mode: 'OFF' },
     target: {
-      arn: aiEndpointArn,
+      arn: 'arn:aws:scheduler:::aws-sdk:bedrock-agentcore:invokeAgentRuntime',
       roleArn: schedulerRole.roleArn,
       input: JSON.stringify({
-        path: '/digest',
-        httpMethod: 'POST',
-        body: '{}',
+        AgentRuntimeArn: aiRuntimeArn,
+        Payload: '{}',
       }),
     },
   })

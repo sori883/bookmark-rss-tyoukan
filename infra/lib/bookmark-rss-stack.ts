@@ -45,7 +45,7 @@ export class BookmarkRssStack extends cdk.Stack {
       stage,
       prefix,
       feedFunctionArn: lambdaResult.feed.functionArn,
-      aiEndpointArn: ai.endpoint.agentRuntimeEndpointArn,
+      aiRuntimeArn: ai.runtime.agentRuntimeArn,
     })
 
     // Outputs
