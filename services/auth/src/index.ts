@@ -1,6 +1,7 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
 import { cors } from 'hono/cors'
+import { secureHeaders, NONCE } from 'hono/secure-headers'
 import { getConfig } from './lib/config'
 import { createLogger } from './lib/logger'
 import { createDb } from './lib/db'
@@ -16,6 +17,11 @@ export function buildApp() {
   const logger = createLogger(config.LOG_LEVEL)
   const { db } = createDb(config.DATABASE_URL)
 
+  const cliCallbackOrigins =
+    config.NODE_ENV !== 'production'
+      ? Array.from({ length: 10 }, (_, i) => `http://localhost:${18923 + i}`)
+      : []
+
   const auth = createAuth({
     db,
     googleClientId: config.GOOGLE_CLIENT_ID,
@@ -25,8 +31,8 @@ export function buildApp() {
     cookieDomain: config.COOKIE_DOMAIN,
     trustedOrigins: [
       config.WEB_ORIGIN,
-      // CLI OAuth コールバック（ポート 18923〜18932）
-      ...Array.from({ length: 10 }, (_, i) => `http://localhost:${18923 + i}`),
+      // CLI OAuth コールバック（開発環境のみ、ポート 18923〜18932）
+      ...cliCallbackOrigins,
     ],
   })
 
@@ -43,6 +49,19 @@ export function buildApp() {
     }),
   )
 
+  // Security headers (HSTS, X-Content-Type-Options, etc.)
+  // デバイスフローページ用にnonce-basedのCSPを使用
+  app.use(
+    '*',
+    secureHeaders({
+      contentSecurityPolicy: {
+        defaultSrc: ["'self'"],
+        scriptSrc: [NONCE],
+        styleSrc: [NONCE],
+      },
+    }),
+  )
+
   // Global error handler
   app.onError((err, c) => {
     logger.error({ err, path: c.req.path, method: c.req.method }, 'Request error')
@@ -53,7 +72,7 @@ export function buildApp() {
   app.get('/health', (c) => c.json({ status: 'ok' }))
 
   // Custom routes under /auth — registered BEFORE Better Auth wildcard
-  app.route('/auth', createServiceTokenRoute(db, logger))
+  app.route('/auth', createServiceTokenRoute(db, auth, logger))
   app.route('/auth', createJwksRoute(db))
   app.route('/auth', createMeRoute(auth))
   app.route('/auth', createDeviceRoute(db, auth))

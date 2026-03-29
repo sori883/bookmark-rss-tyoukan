@@ -49,7 +49,7 @@ export default defineConfig({
         navigateFallback: null,
         runtimeCaching: [
           {
-            urlPattern: /^https?:\/\/localhost:3010\/.*/i,
+            urlPattern: /^https?:\/\/localhost:(3001|3004)\/.*/i,
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-cache',

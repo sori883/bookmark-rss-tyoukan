@@ -1,6 +1,6 @@
 ---
 paths:
-  - "services/{auth,bff,feed,notification}/**/*.ts"
+  - "services/{auth,feed,notification}/**/*.ts"
   - "packages/db/**/*.ts"
 ---
 

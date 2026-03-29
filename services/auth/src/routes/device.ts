@@ -1,9 +1,8 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { SignJWT, importJWK } from 'jose'
 import { eq, and, gt } from 'drizzle-orm'
-import { deviceCodes, jwks as jwksTable, users } from '@bookmark-rss/db'
+import { deviceCodes, users } from '@bookmark-rss/db'
 import type { AppDb } from '../lib/db'
 import type { AuthInstance } from '../auth'
 
@@ -55,7 +54,7 @@ export function createDeviceRoute(db: AppDb, auth: AuthInstance) {
     zValidator(
       'json',
       z.object({
-        device_code: z.string(),
+        device_code: z.string().min(1).max(36),
       }),
     ),
     async (c) => {
@@ -92,33 +91,22 @@ export function createDeviceRoute(db: AppDb, auth: AuthInstance) {
           return c.json({ error: 'user_not_found' }, 400)
         }
 
-        const privateKeyRow = await db
-          .select()
-          .from(jwksTable)
-          .orderBy(jwksTable.createdAt)
-          .limit(1)
-          .then((rows) => rows[0])
-
-        if (!privateKeyRow) {
-          return c.json({ error: 'signing_key_unavailable' }, 500)
-        }
-
-        const publicKeyJwk = JSON.parse(privateKeyRow.publicKey) as { alg?: string }
-        const alg = publicKeyJwk.alg ?? 'EdDSA'
-        const privateKeyJwk = JSON.parse(privateKeyRow.privateKey) as JsonWebKey
-        const privateKey = await importJWK(privateKeyJwk, alg)
-
         const expirySeconds = 30 * 24 * 60 * 60 // 30日
-        const token = await new SignJWT({
-          email: user.email,
-          name: user.name,
+        const { token } = await auth.api.signJWT({
+          body: {
+            payload: {
+              sub: user.id,
+              iss: 'bookmark-rss-auth',
+              email: user.email,
+              name: user.name,
+            },
+            overrideOptions: {
+              jwt: {
+                expirationTime: `${expirySeconds}s`,
+              },
+            },
+          },
         })
-          .setProtectedHeader({ alg, kid: privateKeyRow.id })
-          .setIssuer('bookmark-rss-auth')
-          .setSubject(user.id)
-          .setIssuedAt()
-          .setExpirationTime(`${expirySeconds}s`)
-          .sign(privateKey)
 
         // デバイスコードを削除（使い捨て）
         await db
@@ -138,12 +126,13 @@ export function createDeviceRoute(db: AppDb, auth: AuthInstance) {
 
   // GET /auth/device — ブラウザ用コード入力ページ
   app.get('/device', (c) => {
+    const nonce = c.get('secureHeadersNonce')
     return c.html(`<!DOCTYPE html>
 <html><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>CLI ログイン - bookmark-rss</title>
-<style>
+<style nonce="${nonce}">
   body { font-family: system-ui; max-width: 400px; margin: 80px auto; padding: 0 20px; background: #0a0a0a; color: #e5e5e5; }
   h1 { font-size: 1.5rem; text-align: center; }
   p { text-align: center; color: #a3a3a3; }
@@ -164,7 +153,7 @@ export function createDeviceRoute(db: AppDb, auth: AuthInstance) {
   <div id="msg"></div>
   <button type="submit">認証する</button>
 </form>
-<script>
+<script nonce="${nonce}">
 document.getElementById('form').onsubmit = async (e) => {
   e.preventDefault();
   const code = document.getElementById('code').value.replace(/-/g, '').toUpperCase();
@@ -197,7 +186,7 @@ document.getElementById('form').onsubmit = async (e) => {
     zValidator(
       'json',
       z.object({
-        user_code: z.string().min(1),
+        user_code: z.string().min(1).max(9),
       }),
     ),
     async (c) => {

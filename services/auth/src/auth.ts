@@ -50,7 +50,7 @@ export function createAuth(options: {
     plugins: [
       jwt({
         jwks: {
-          disablePrivateKeyEncryption: true,
+          disablePrivateKeyEncryption: false,
         },
       }),
       bearer(),

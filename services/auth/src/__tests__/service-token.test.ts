@@ -1,28 +1,25 @@
 import { describe, it, expect, vi, beforeAll } from 'vitest'
 import { Hono } from 'hono'
 import bcrypt from 'bcryptjs'
-import { generateKeyPair, exportJWK, importJWK, jwtVerify } from 'jose'
 import { createServiceTokenRoute } from '../routes/service-token'
 import { errorResponse } from '../lib/errors'
 import pino from 'pino'
+import type { AuthInstance } from '../auth'
 
 // サイレントロガー
 const logger = pino({ level: 'silent' })
 
-// テスト用のRSA鍵ペア
-let privateKeyJwk: JsonWebKey
-let publicKeyJwk: JsonWebKey
-const TEST_KID = 'test-key-1'
-
-beforeAll(async () => {
-  const { privateKey, publicKey } = await generateKeyPair('RS256', {
-    extractable: true,
-  })
-  privateKeyJwk = { ...(await exportJWK(privateKey)), alg: 'RS256' }
-  publicKeyJwk = { ...(await exportJWK(publicKey)), alg: 'RS256' }
-})
+const MOCK_TOKEN = 'mock-jwt-token'
 
 type MockDb = Parameters<typeof createServiceTokenRoute>[0]
+
+function createMockAuth(): AuthInstance {
+  return {
+    api: {
+      signJWT: vi.fn().mockResolvedValue({ token: MOCK_TOKEN }),
+    },
+  } as unknown as AuthInstance
+}
 
 function createMockDbForInvalidClient(): MockDb {
   const mockLimit = vi.fn().mockReturnValue({
@@ -36,32 +33,15 @@ function createMockDbForInvalidClient(): MockDb {
 
 function createMockDbForValidCredentials(
   serviceAccount: Record<string, unknown>,
-  jwksRow: Record<string, unknown>,
 ): MockDb {
-  let callCount = 0
   const mockSelect = vi.fn().mockReturnValue({
-    from: vi.fn().mockImplementation(() => {
-      callCount++
-      if (callCount === 1) {
-        // service_accounts
-        return {
-          where: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
-              then: (cb: (rows: unknown[]) => unknown) =>
-                Promise.resolve(cb([serviceAccount])),
-            }),
-          }),
-        }
-      }
-      // jwks
-      return {
-        orderBy: vi.fn().mockReturnValue({
-          limit: vi.fn().mockReturnValue({
-            then: (cb: (rows: unknown[]) => unknown) =>
-              Promise.resolve(cb([jwksRow])),
-          }),
+    from: vi.fn().mockReturnValue({
+      where: vi.fn().mockReturnValue({
+        limit: vi.fn().mockReturnValue({
+          then: (cb: (rows: unknown[]) => unknown) =>
+            Promise.resolve(cb([serviceAccount])),
         }),
-      }
+      }),
     }),
   })
   return { select: mockSelect } as unknown as MockDb
@@ -70,7 +50,8 @@ function createMockDbForValidCredentials(
 describe('POST /auth/service-token', () => {
   it('should return 401 for invalid client_id', async () => {
     const db = createMockDbForInvalidClient()
-    const route = createServiceTokenRoute(db, logger)
+    const auth = createMockAuth()
+    const route = createServiceTokenRoute(db, auth, logger)
 
     const app = new Hono()
     app.onError((err, c) => errorResponse(c, err))
@@ -93,24 +74,16 @@ describe('POST /auth/service-token', () => {
   it('should return service JWT for valid credentials', async () => {
     const hashedSecret = await bcrypt.hash('valid-secret', 10)
 
-    const db = createMockDbForValidCredentials(
-      {
-        id: 'sa-1',
-        serviceName: 'feed',
-        clientId: 'feed-client',
-        clientSecretHash: hashedSecret,
-        createdAt: new Date(),
-      },
-      {
-        id: TEST_KID,
-        publicKey: JSON.stringify(publicKeyJwk),
-        privateKey: JSON.stringify(privateKeyJwk),
-        createdAt: new Date(),
-        expiresAt: null,
-      },
-    )
+    const db = createMockDbForValidCredentials({
+      id: 'sa-1',
+      serviceName: 'feed',
+      clientId: 'feed-client',
+      clientSecretHash: hashedSecret,
+      createdAt: new Date(),
+    })
 
-    const route = createServiceTokenRoute(db, logger)
+    const auth = createMockAuth()
+    const route = createServiceTokenRoute(db, auth, logger)
 
     const app = new Hono()
     app.onError((err, c) => errorResponse(c, err))
@@ -129,21 +102,31 @@ describe('POST /auth/service-token', () => {
     const body = await res.json()
     expect(body.token_type).toBe('Bearer')
     expect(body.expires_in).toBe(86400)
-    expect(body.access_token).toBeDefined()
+    expect(body.access_token).toBe(MOCK_TOKEN)
 
-    // JWT を検証
-    const pubKey = await importJWK(publicKeyJwk, 'RS256')
-    const { payload } = await jwtVerify(body.access_token, pubKey)
-    expect(payload.sub).toBe('sa-1')
-    expect(payload.type).toBe('service')
-    expect(payload.service_name).toBe('feed')
-    expect(payload.client_id).toBe('feed-client')
-    expect(payload.iss).toBe('bookmark-rss-auth')
+    // auth.api.signJWT が正しいペイロードで呼ばれたことを検証
+    expect(auth.api.signJWT).toHaveBeenCalledWith({
+      body: {
+        payload: {
+          sub: 'sa-1',
+          iss: 'bookmark-rss-auth',
+          type: 'service',
+          service_name: 'feed',
+          client_id: 'feed-client',
+        },
+        overrideOptions: {
+          jwt: {
+            expirationTime: '86400s',
+          },
+        },
+      },
+    })
   })
 
   it('should return 400 for missing fields', async () => {
     const db = createMockDbForInvalidClient()
-    const route = createServiceTokenRoute(db, logger)
+    const auth = createMockAuth()
+    const route = createServiceTokenRoute(db, auth, logger)
 
     const app = new Hono()
     app.route('/auth', route)

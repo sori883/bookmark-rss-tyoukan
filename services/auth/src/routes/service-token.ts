@@ -1,10 +1,8 @@
 import { Hono } from 'hono'
 import { zValidator } from '@hono/zod-validator'
 import { z } from 'zod'
-import { SignJWT, importJWK } from 'jose'
-import { jwks as jwksTable } from '@bookmark-rss/db'
 import { verifyServiceAccount } from '../services/service-account'
-import { AppError } from '../lib/errors'
+import type { AuthInstance } from '../auth'
 import type { AppDb } from '../lib/db'
 import type pino from 'pino'
 
@@ -12,11 +10,11 @@ const SERVICE_TOKEN_EXPIRY_SECONDS = 86400 // 24h
 const ISSUER = 'bookmark-rss-auth'
 
 const serviceTokenRequestSchema = z.object({
-  client_id: z.string().min(1),
-  client_secret: z.string().min(1),
+  client_id: z.string().min(1).max(128),
+  client_secret: z.string().min(1).max(256),
 })
 
-export function createServiceTokenRoute(db: AppDb, logger: pino.Logger) {
+export function createServiceTokenRoute(db: AppDb, auth: AuthInstance, logger: pino.Logger) {
   const app = new Hono()
 
   app.post(
@@ -32,42 +30,22 @@ export function createServiceTokenRoute(db: AppDb, logger: pino.Logger) {
         'Service token issued',
       )
 
-      const privateKeyRow = await db
-        .select()
-        .from(jwksTable)
-        .orderBy(jwksTable.createdAt)
-        .limit(1)
-        .then((rows) => rows[0])
-
-      if (!privateKeyRow) {
-        throw new AppError(
-          'INTERNAL_ERROR',
-          'No signing key available. Ensure Better Auth JWT plugin has initialized.',
-          500,
-        )
-      }
-
-      // Detect algorithm from the public key
-      const publicKeyJwk = JSON.parse(privateKeyRow.publicKey) as { alg?: string }
-      const alg = publicKeyJwk.alg ?? 'EdDSA'
-
-      const privateKeyJwk = JSON.parse(privateKeyRow.privateKey) as JsonWebKey
-      const privateKey = await importJWK(privateKeyJwk, alg)
-
-      const token = await new SignJWT({
-        type: 'service',
-        service_name: account.serviceName,
-        client_id: account.clientId,
+      const { token } = await auth.api.signJWT({
+        body: {
+          payload: {
+            sub: account.id,
+            iss: ISSUER,
+            type: 'service',
+            service_name: account.serviceName,
+            client_id: account.clientId,
+          },
+          overrideOptions: {
+            jwt: {
+              expirationTime: `${SERVICE_TOKEN_EXPIRY_SECONDS}s`,
+            },
+          },
+        },
       })
-        .setProtectedHeader({
-          alg,
-          kid: privateKeyRow.id,
-        })
-        .setIssuer(ISSUER)
-        .setSubject(account.id)
-        .setIssuedAt()
-        .setExpirationTime(`${SERVICE_TOKEN_EXPIRY_SECONDS}s`)
-        .sign(privateKey)
 
       return c.json({
         access_token: token,

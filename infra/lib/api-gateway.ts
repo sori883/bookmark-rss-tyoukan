@@ -33,6 +33,28 @@ export function createApiGateway(
     restApiName: `${prefix}-api-${stage}`,
     deployOptions: {
       stageName: stage,
+      // ステージレベルのデフォルトスロットリング
+      throttlingRateLimit: 50, // リクエスト/秒
+      throttlingBurstLimit: 100,
+      // 認証エンドポイントは個別にレート制限
+      methodOptions: {
+        '/auth/device/code/POST': {
+          throttlingRateLimit: 5,
+          throttlingBurstLimit: 10,
+        },
+        '/auth/device/token/POST': {
+          throttlingRateLimit: 12,
+          throttlingBurstLimit: 20,
+        },
+        '/auth/device/authorize/POST': {
+          throttlingRateLimit: 5,
+          throttlingBurstLimit: 10,
+        },
+        '/auth/service-token/POST': {
+          throttlingRateLimit: 10,
+          throttlingBurstLimit: 20,
+        },
+      },
     },
     defaultCorsPreflightOptions: {
       allowOrigins: [...allowOrigins],

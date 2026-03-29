@@ -10,7 +10,7 @@
 
 ## API通信先
 
-- bff サービス (http://localhost:3010)
+- feed サービス (http://localhost:3001) — フィード・記事・ブックマーク
 - auth サービス (http://localhost:3000) — OAuthフロー
 
 ## コマンド体系
