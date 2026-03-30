@@ -1,35 +1,59 @@
 # Bookmark RSS Tyoukan
 
-RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合したWebアプリケーション。
+RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合したWebアプリケーション。Web UI・CLIを備え、人間とAIの両方が操作できるシステムです。
 
 ## アーキテクチャ概要
 
-```
-┌──────────────────────────────────────────────────────┐
-│  クライアント                                           │
-│  web (React PWA)  │  cli (Rust)  │  extension (Chrome) │
-└────────────┬─────────────┬──────────────┬────────────┘
-             │ REST + JWT  │              │
-┌────────────▼─────────────▼──────────────▼────────────┐
-│  API Gateway (Lambda Authorizer)                      │
-├───────────┬───────────┬───────────┬──────────────────┤
-│   auth    │   feed    │notification│       ai        │
-│  (3000)   │  (3001)   │  (3004)   │     (3003)      │
-│  TS/Hono  │  TS/Hono  │  TS/Hono  │  Python/FastAPI │
-└─────┬─────┴─────┬─────┴─────┬─────┴────────┬────────┘
-      │           │           │              │
-      ▼           ▼           ▼              ▼
-   PostgreSQL 17          Slack/Discord   AWS Bedrock
-   (共有DB)               Webhook        Claude Haiku
+```mermaid
+graph TD
+    subgraph Clients["クライアント"]
+        web["web<br/>React PWA"]
+        cli["cli<br/>Rust"]
+        ext["extension<br/>Chrome"]
+    end
+
+    web -->|OAuth フロー| auth
+    cli -->|デバイスコードフロー| auth
+    ext -->|デバイスコードフロー| auth
+
+    web -->|REST + JWT| gw
+    cli -->|REST + JWT| gw
+    ext -->|REST + JWT| gw
+
+    subgraph AWS["AWS"]
+        gw["API Gateway<br/>Lambda Authorizer"]
+        gw -->|REST| auth["auth<br/>TS/Hono · Lambda"]
+        gw -->|REST| feed["feed<br/>TS/Hono · Lambda"]
+        gw -->|REST| notification["notification<br/>TS/Hono · Lambda"]
+        ai["ai<br/>Python/FastAPI · AgentCore"]
+    end
+
+    auth -.->|JWKS 公開鍵| feed
+    auth -.->|JWKS 公開鍵| notification
+    auth -.->|JWKS 公開鍵| ai
+
+    ai -->|REST| feed
+    ai -->|REST| notification
+
+    cron["EventBridge Scheduler"]
+    cron -->|30分間隔| feed
+    cron -->|毎日| ai
+
+    auth --> db[("PostgreSQL 17")]
+    feed --> db
+    notification --> db
+
+    ai -->|Claude Haiku| bedrock["AWS Bedrock"]
+    notification -->|Webhook| slack["Slack / Discord"]
 ```
 
-- **auth**: Google OAuth, JWT発行, JWKS公開, デバイスコードフロー
-- **feed**: フィードCRUD, RSS定期取得, 記事管理, ブックマーク(本文抽出・全文検索), ユーザ設定
-- **ai**: 新着記事から注目記事を選定・要約し通知送信 (Strands Agents SDK → AgentCore)
-- **notification**: Slack/Discord Webhook送信, 通知履歴管理
-- **web**: フロントエンド PWA (TanStack Start + React 19 + Tailwind CSS)
-- **cli**: ターミナルからフィード・ブックマーク操作 (Rust/clap)
-- **extension**: Chrome拡張でワンクリックブックマーク (WXT)
+- **auth**: 認証・JWT発行・JWKS公開
+- **feed**: フィードCRUD, RSS定期取得, 記事管理, ブックマーク, ユーザ設定
+- **ai**: 新着記事から注目記事を選定・要約し通知送信
+- **notification**: Webhook送信, 通知履歴管理
+- **web**: フロントエンド PWA
+- **cli**: ターミナルからフィード・ブックマーク操作
+- **extension**: Chrome拡張でワンクリックブックマーク
 
 ## サービス一覧
 
@@ -47,7 +71,7 @@ RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合
 | パッケージ | 言語 | 責務 |
 |-----------|------|------|
 | db | TypeScript (Drizzle ORM) | DBスキーマ・マイグレーション |
-| mcp-server | Python (FastMCP) | MCP経由で記事・ブックマーク操作 |
+
 
 ## 前提条件
 
@@ -57,10 +81,10 @@ RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合
 | pnpm | 10.32.1 | `packageManager` フィールドで指定。corepack 有効化推奨 |
 | Docker / Docker Compose | 最新安定版 | PostgreSQL 17 コンテナ |
 | Rust (cargo) | edition 2021 対応 (1.56+) | CLI ビルド用 |
-| Python | >= 3.12 | AI サービス・MCPサーバー用 |
+| Python | >= 3.12 | AI サービス用 |
 | uv | 最新安定版 | Python パッケージ管理 |
 
-## セットアップ
+## ローカルセットアップ
 
 ### 1. 環境変数の設定
 
@@ -118,9 +142,9 @@ Google Cloud Console でOAuthクライアントを作成し、以下を設定す
 - 承認済みリダイレクト URI: `http://localhost:3000/auth/callback/google`
 - 承認済み JavaScript 生成元: `http://localhost:5173`, `http://localhost:3000`
 
-## サービス起動
+### サービス起動
 
-### バックグラウンド起動 (推奨)
+#### バックグラウンド起動 (推奨)
 
 ```bash
 make dev-bg
@@ -137,7 +161,7 @@ tail -f logs/feed.log
 make dev-stop
 ```
 
-### フォアグラウンド起動
+#### フォアグラウンド起動
 
 ```bash
 make dev
@@ -145,7 +169,7 @@ make dev
 
 全サービスを並列起動する。ログが混在するため `dev-bg` を推奨。
 
-### 個別サービス起動
+#### 個別サービス起動
 
 ```bash
 make auth-dev            # auth (Port 3000)
@@ -155,9 +179,9 @@ make notification-dev    # notification (Port 3004)
 make web-dev             # web (Port 5173)
 ```
 
-## テスト
+### テスト
 
-### ユニットテスト (全サービス)
+#### ユニットテスト (全サービス)
 
 ```bash
 make test
@@ -174,14 +198,14 @@ cd apps/web && pnpm test
 cd apps/cli && cargo test
 ```
 
-### Lint / 型チェック
+#### Lint / 型チェック
 
 ```bash
 make lint
 make typecheck
 ```
 
-### 結合テスト
+#### 結合テスト
 
 全サービスが起動中かつシードデータ投入済みの状態で実行する。
 
@@ -189,11 +213,29 @@ make typecheck
 cd tests/integration && pnpm test
 ```
 
-## CDKデプロイ
+## デプロイメント
 
-### 前提: SSMパラメータの事前設定
+本番環境ではデータベースに Supabase (マネージド PostgreSQL) を使用する。
 
-初回のみ。`infra/.env.deploy.example` をコピーして値を埋め、スクリプトで登録する:
+### フロントエンド (Vercel)
+
+Vercel に以下の環境変数を設定する。値は CDK デプロイ後に確定する API Gateway の URL を指定する。
+
+| 環境変数 | 用途 |
+|---------|------|
+| `VITE_AUTH_BASE_URL` | 認証サービスの URL |
+| `VITE_API_BASE_URL` | feed サービスの URL |
+| `VITE_NOTIFICATION_BASE_URL` | notification サービスの URL |
+
+### データベース (Supabase)
+
+Supabase プロジェクトを作成し、接続文字列を取得する。`DATABASE_URL` は SSMパラメータおよび Vercel の環境変数で設定する。
+
+### バックエンド (AWS CDK)
+
+#### SSMパラメータの設定（初回のみ）
+
+`infra/.env.deploy.example` をコピーして値を埋め、スクリプトで登録する:
 
 ```bash
 cp infra/.env.deploy.example infra/.env.deploy
@@ -201,7 +243,7 @@ cp infra/.env.deploy.example infra/.env.deploy
 bash infra/scripts/setup-ssm.sh dev
 ```
 
-### デプロイ
+#### CDKデプロイ
 
 ```bash
 cd infra
@@ -210,7 +252,7 @@ npx cdk diff          # 変更内容の確認
 npx cdk deploy --all  # デプロイ実行
 ```
 
-### デプロイされるリソース
+#### デプロイされるリソース
 
 - Lambda x4: auth, feed, notification, authorizer (JWT検証)
 - API Gateway HTTP API (Lambda Authorizer付き)
@@ -227,32 +269,3 @@ npx cdk deploy --all  # デプロイ実行
 | [04.API型定義](docs/04.API型定義.md) | サービス間リクエスト/レスポンス型 |
 | [05.ディレクトリ構成](docs/05.ディレクトリ構成.md) | プロジェクトのファイル構成 |
 
-## トラブルシューティング
-
-### PostgreSQL が起動しない
-
-- Docker Desktop が起動しているか確認する。
-- ポート 5432 が他のプロセスに使われていないか確認する: `lsof -i :5432`
-- コンテナを完全リセットする: `make db-reset`
-
-### auth サービスが起動しない
-
-- `.env.test` の `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` / `BETTER_AUTH_SECRET` が設定されているか確認する。
-- 環境変数がシェルに読み込まれているか確認する: `echo $GOOGLE_CLIENT_ID`
-
-### 結合テストが失敗する
-
-- 全サービス (auth, feed, notification) が起動しているか確認する。
-- シードデータが投入済みか確認する: `pnpm seed-test`
-- DB をリセットして再セットアップする: `make db-reset && make migrate && pnpm seed-test`
-
-### JWKS エラー (JWT検証失敗)
-
-- auth サービスが起動しているか確認する。
-- JWKS エンドポイントにアクセスできるか確認する: `curl http://localhost:3000/auth/.well-known/jwks.json`
-- JWKS 鍵ペアを再生成する: `pnpm seed-test`
-
-### feed / notification が認証エラーになる
-
-- auth の JWKS エンドポイントが応答しているか確認する。
-- 各サービスの `JWKS_URL` が `http://localhost:3000/auth/.well-known/jwks.json` を指しているか確認する。
