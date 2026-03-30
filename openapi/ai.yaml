@@ -58,7 +58,14 @@ components:
         since:
           type: string
           format: date-time
-          description: 省略時は前日分
+          description: 省略時は前日分（JST基準）
+        user_id:
+          type: string
+          format: uuid
+          description: 特定ユーザーのみ対象（省略時は全ユーザー）
+        skip_hour_filter:
+          type: boolean
+          description: true でnotification_hourフィルタをスキップ
 
     DigestResponse:
       type: object
@@ -80,3 +87,7 @@ components:
                 type: string
               summary:
                 type: string
+              og_image_url:
+                type: string
+                nullable: true
+                description: OG画像URL

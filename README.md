@@ -2,6 +2,53 @@
 
 RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合したWebアプリケーション。
 
+## アーキテクチャ概要
+
+```
+┌──────────────────────────────────────────────────────┐
+│  クライアント                                           │
+│  web (React PWA)  │  cli (Rust)  │  extension (Chrome) │
+└────────────┬─────────────┬──────────────┬────────────┘
+             │ REST + JWT  │              │
+┌────────────▼─────────────▼──────────────▼────────────┐
+│  API Gateway (Lambda Authorizer)                      │
+├───────────┬───────────┬───────────┬──────────────────┤
+│   auth    │   feed    │notification│       ai        │
+│  (3000)   │  (3001)   │  (3004)   │     (3003)      │
+│  TS/Hono  │  TS/Hono  │  TS/Hono  │  Python/FastAPI │
+└─────┬─────┴─────┬─────┴─────┬─────┴────────┬────────┘
+      │           │           │              │
+      ▼           ▼           ▼              ▼
+   PostgreSQL 17          Slack/Discord   AWS Bedrock
+   (共有DB)               Webhook        Claude Haiku
+```
+
+- **auth**: Google OAuth, JWT発行, JWKS公開, デバイスコードフロー
+- **feed**: フィードCRUD, RSS定期取得, 記事管理, ブックマーク(本文抽出・全文検索), ユーザ設定
+- **ai**: 新着記事から注目記事を選定・要約し通知送信 (Strands Agents SDK → AgentCore)
+- **notification**: Slack/Discord Webhook送信, 通知履歴管理
+- **web**: フロントエンド PWA (TanStack Start + React 19 + Tailwind CSS)
+- **cli**: ターミナルからフィード・ブックマーク操作 (Rust/clap)
+- **extension**: Chrome拡張でワンクリックブックマーク (WXT)
+
+## サービス一覧
+
+| サービス | 言語 | ポート | 責務 | デプロイ先 |
+|---------|------|-------|------|-----------|
+| auth | TypeScript (Hono) | 3000 | 認証・JWT発行・JWKS | AWS Lambda |
+| feed | TypeScript (Hono) | 3001 | フィード・記事・ブックマーク・設定 | AWS Lambda |
+| ai | Python (FastAPI) | 3003 | AI記事選定・要約 | AgentCore Runtime |
+| notification | TypeScript (Hono) | 3004 | Webhook通知・履歴 | AWS Lambda |
+| web | TypeScript (TanStack Start) | 5173 | WebUI (PWA) | Vercel |
+| cli | Rust (clap) | - | CLIクライアント | バイナリ配布 |
+| extension | TypeScript (WXT) | - | Chrome拡張 | Chrome ウェブストア |
+
+**共有パッケージ:**
+| パッケージ | 言語 | 責務 |
+|-----------|------|------|
+| db | TypeScript (Drizzle ORM) | DBスキーマ・マイグレーション |
+| mcp-server | Python (FastMCP) | MCP経由で記事・ブックマーク操作 |
+
 ## 前提条件
 
 | ツール | バージョン | 備考 |
@@ -10,7 +57,7 @@ RSSフィード購読・AI要約通知・ブックマーク本文抽出を統合
 | pnpm | 10.32.1 | `packageManager` フィールドで指定。corepack 有効化推奨 |
 | Docker / Docker Compose | 最新安定版 | PostgreSQL 17 コンテナ |
 | Rust (cargo) | edition 2021 対応 (1.56+) | CLI ビルド用 |
-| Python | >= 3.12 | AI サービス用 |
+| Python | >= 3.12 | AI サービス・MCPサーバー用 |
 | uv | 最新安定版 | Python パッケージ管理 |
 
 ## セットアップ
@@ -65,9 +112,13 @@ make setup
 - DB マイグレーション
 - シードデータ投入 (テストユーザー, JWKS鍵, サービスアカウント, Webhook設定)
 
-## サービス起動
+### 3. Google OAuth の設定
 
-Makefile が `.env.test` を自動で読み込むため、手動での `source` は不要。
+Google Cloud Console でOAuthクライアントを作成し、以下を設定する:
+- 承認済みリダイレクト URI: `http://localhost:3000/auth/callback/google`
+- 承認済み JavaScript 生成元: `http://localhost:5173`, `http://localhost:3000`
+
+## サービス起動
 
 ### バックグラウンド起動 (推奨)
 
@@ -94,82 +145,17 @@ make dev
 
 全サービスを並列起動する。ログが混在するため `dev-bg` を推奨。
 
-### ポート一覧
-
-| サービス | ポート |
-|---------|-------|
-| auth | 3000 |
-| feed | 3001 |
-| ai | 3003 |
-| notification | 3004 |
-| web (Vite) | 5173 |
-
-## 手動試験シナリオ
-
-### a. Google OAuth ログイン
-
-1. Google Cloud Console でOAuthクライアントを作成し、以下を設定する:
-   - 承認済みリダイレクト URI: `http://localhost:3000/auth/callback/google`
-   - 承認済み JavaScript 生成元: `http://localhost:5173`, `http://localhost:3000`
-2. 取得した `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` を `.env.test` に設定する。
-3. ブラウザで http://localhost:5173 にアクセスし、ログインボタンをクリック。
-4. Google アカウントで認証後、JWT が発行されアプリにリダイレクトされる。
-
-### b. フィード登録・記事閲覧
-
-1. ログイン後、Web UI からフィード URL (例: `https://zenn.dev/feed`) を登録する。
-2. 記事一覧が表示されることを確認する。
-3. 記事をクリックして詳細を表示する (自動既読)。
-
-### c. ブックマーク登録・検索
-
-1. 記事一覧からブックマークボタンで追加する。
-2. URL 指定でブックマークを追加する。
-3. ブックマーク全文検索でキーワード検索を試す。
-
-### d. 設定変更
-
-1. 設定画面で Webhook URL (Discord or Slack) を入力する。
-2. Webhook Type を `discord` または `slack` に変更する。
-
-### e. CLI 操作
+### 個別サービス起動
 
 ```bash
-# ビルド
-cd apps/cli && cargo build
-
-# ログイン (ブラウザが開く)
-./target/debug/bookmark-rss-cli login
-
-# フィード一覧
-./target/debug/bookmark-rss-cli feed list
-
-# フィード追加
-./target/debug/bookmark-rss-cli feed add https://zenn.dev/feed
-
-# 記事一覧
-./target/debug/bookmark-rss-cli article list --unread
-
-# ブックマーク一覧
-./target/debug/bookmark-rss-cli bookmark list
-
-# ブックマーク検索
-./target/debug/bookmark-rss-cli bookmark search "キーワード"
+make auth-dev            # auth (Port 3000)
+make feed-dev            # feed (Port 3001)
+make ai-dev              # ai (Port 3003)
+make notification-dev    # notification (Port 3004)
+make web-dev             # web (Port 5173)
 ```
 
-### f. 通知確認
-
-Webhook 設定が完了した状態で、ai サービスの POST /digest を手動呼び出しする。
-
-```bash
-curl -X POST http://localhost:3003/digest \
-  -H "Content-Type: application/json" \
-  -d '{}'
-```
-
-Discord / Slack にAI要約通知が届くことを確認する。
-
-## 自動テスト実行
+## テスト
 
 ### ユニットテスト (全サービス)
 
@@ -203,11 +189,43 @@ make typecheck
 cd tests/integration && pnpm test
 ```
 
-### CDK Synth
+## CDKデプロイ
+
+### 前提: SSMパラメータの事前設定
+
+初回のみ。`infra/.env.deploy.example` をコピーして値を埋め、スクリプトで登録する:
 
 ```bash
-cd infra && npx cdk synth
+cp infra/.env.deploy.example infra/.env.deploy
+# infra/.env.deploy を編集して実際の値を設定
+bash infra/scripts/setup-ssm.sh dev
 ```
+
+### デプロイ
+
+```bash
+cd infra
+pnpm install
+npx cdk diff          # 変更内容の確認
+npx cdk deploy --all  # デプロイ実行
+```
+
+### デプロイされるリソース
+
+- Lambda x4: auth, feed, notification, authorizer (JWT検証)
+- API Gateway HTTP API (Lambda Authorizer付き)
+- AgentCore Runtime (ai)
+- EventBridge Scheduler (RSS定期取得 30分間隔, AIダイジェスト 毎日)
+
+## 設計ドキュメント
+
+| ドキュメント | 内容 |
+|-------------|------|
+| [01.要求定義](docs/01.要求定義.md) | 機能要求 |
+| [02.技術設計](docs/02.技術設計.md) | アーキテクチャ・技術選定 |
+| [03.データモデル](docs/03.データモデル.md) | テーブル定義 |
+| [04.API型定義](docs/04.API型定義.md) | サービス間リクエスト/レスポンス型 |
+| [05.ディレクトリ構成](docs/05.ディレクトリ構成.md) | プロジェクトのファイル構成 |
 
 ## トラブルシューティング
 

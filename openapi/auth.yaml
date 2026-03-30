@@ -192,6 +192,91 @@ paths:
               schema:
                 $ref: "#/components/schemas/JWKSResponse"
 
+  # ─── デバイスコードフロー（CLI/拡張機能向け） ───
+  /auth/device/code:
+    post:
+      summary: デバイスコード発行
+      description: CLI/拡張機能向けにデバイスコードとユーザーコードを発行する
+      operationId: createDeviceCode
+      responses:
+        "200":
+          description: デバイスコード発行成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceCodeResponse"
+
+  /auth/device:
+    get:
+      summary: デバイスコード入力画面
+      description: ユーザーがブラウザでコードを入力するHTML画面を返す
+      operationId: getDevicePage
+      responses:
+        "200":
+          description: HTML画面
+          content:
+            text/html:
+              schema:
+                type: string
+
+  /auth/device/authorize:
+    post:
+      summary: デバイスコード承認
+      description: ブラウザ側でセッション認証済みのユーザーがデバイスコードを承認する
+      operationId: authorizeDevice
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceAuthorizeRequest"
+      responses:
+        "200":
+          description: 承認成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [authorized]
+        "401":
+          description: 未認証
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    enum: [not_authenticated]
+                  login_url:
+                    type: string
+
+  /auth/device/token:
+    post:
+      summary: デバイストークンポーリング
+      description: CLI/拡張機能がポーリングでトークンを取得する
+      operationId: pollDeviceToken
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceTokenRequest"
+      responses:
+        "200":
+          description: トークン発行成功（承認済み）
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeviceTokenResponse"
+        "428":
+          description: 未承認（authorization_pending）
+        "400":
+          description: 期限切れ or 無効
+
 components:
   securitySchemes:
     bearerAuth:
@@ -291,6 +376,50 @@ components:
               use:
                 type: string
                 enum: [sig]
+
+    DeviceCodeResponse:
+      type: object
+      required: [device_code, user_code, verification_uri, expires_in, interval]
+      properties:
+        device_code:
+          type: string
+        user_code:
+          type: string
+          description: XXXX-XXXX形式
+        verification_uri:
+          type: string
+        expires_in:
+          type: integer
+          description: 秒（600 = 10分）
+        interval:
+          type: integer
+          description: ポーリング間隔（秒）
+
+    DeviceAuthorizeRequest:
+      type: object
+      required: [user_code]
+      properties:
+        user_code:
+          type: string
+
+    DeviceTokenRequest:
+      type: object
+      required: [device_code]
+      properties:
+        device_code:
+          type: string
+
+    DeviceTokenResponse:
+      type: object
+      required: [access_token, token_type, expires_in]
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+          enum: [Bearer]
+        expires_in:
+          type: integer
 
     ErrorResponse:
       type: object

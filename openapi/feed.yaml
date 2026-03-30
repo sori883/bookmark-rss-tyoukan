@@ -126,6 +126,12 @@ paths:
           in: query
           schema:
             type: boolean
+        - name: user_id
+          in: query
+          description: サービスJWT使用時の対象ユーザーID
+          schema:
+            type: string
+            format: uuid
         - $ref: "#/components/parameters/PageParam"
         - $ref: "#/components/parameters/LimitParam"
       responses:
@@ -265,13 +271,40 @@ paths:
         "204":
           description: 削除成功
 
+  /articles/mark-read-by-url:
+    patch:
+      summary: URL指定で既読更新
+      operationId: markReadByUrl
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarkReadByUrlRequest"
+      responses:
+        "200":
+          description: 既読更新成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarkReadByUrlResponse"
+
   /articles/bulk-read:
     patch:
       summary: 記事一括既読更新
-      description: 指定した記事IDの記事を一括で既読にする
+      description: 指定した記事IDの記事を一括で既読にする。サービスJWT使用時はuser_idクエリで対象ユーザー指定可能。
       operationId: bulkReadArticles
       security:
         - bearerAuth: []
+      parameters:
+        - name: user_id
+          in: query
+          description: サービスJWT使用時の対象ユーザーID
+          schema:
+            type: string
+            format: uuid
       requestBody:
         required: true
         content:
@@ -315,6 +348,23 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/SettingsResponse"
+
+  /settings/notification-targets:
+    get:
+      summary: 通知対象ユーザ一覧（サービスJWT専用）
+      description: Webhook設定済みの通知対象ユーザー一覧を返す。AIサービスがダイジェスト送信先を取得するために使用。
+      operationId: getNotificationTargets
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: 通知対象ユーザ一覧
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NotificationTargetsResponse"
+        "403":
+          description: サービスJWT以外は禁止
 
 components:
   securitySchemes:
@@ -442,6 +492,10 @@ components:
         description:
           type: string
           description: 記事概要（RSSのdescription）
+        og_image_url:
+          type: string
+          nullable: true
+          description: OG画像URL
         is_read:
           type: boolean
         is_bookmarked:
@@ -547,25 +601,67 @@ components:
         updated_count:
           type: integer
 
+    MarkReadByUrlRequest:
+      type: object
+      required: [url]
+      properties:
+        url:
+          type: string
+
+    MarkReadByUrlResponse:
+      type: object
+      required: [success]
+      properties:
+        success:
+          type: boolean
+
     SettingsResponse:
       type: object
       properties:
-        webhook_url:
-          type: string
-          nullable: true
+        webhook_url_registered:
+          type: boolean
+          description: Webhook URLが登録済みか（URLは返さない）
         webhook_type:
           type: string
           enum: [slack, discord]
           nullable: true
+        notification_hour:
+          type: integer
+          description: 通知時間 (0-23, デフォルト 9)
 
     UpdateSettingsRequest:
       type: object
       properties:
         webhook_url:
           type: string
+          description: HTTPS必須
         webhook_type:
           type: string
           enum: [slack, discord]
+        notification_hour:
+          type: integer
+          minimum: 0
+          maximum: 23
+
+    NotificationTargetsResponse:
+      type: object
+      required: [data]
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+            required: [user_id, webhook_url, webhook_type, notification_hour]
+            properties:
+              user_id:
+                type: string
+                format: uuid
+              webhook_url:
+                type: string
+              webhook_type:
+                type: string
+              notification_hour:
+                type: integer
 
     ErrorResponse:
       type: object
