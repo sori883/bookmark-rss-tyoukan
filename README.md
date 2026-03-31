@@ -179,6 +179,60 @@ make notification-dev    # notification (Port 3004)
 make web-dev             # web (Port 5173)
 ```
 
+### CLI (Rust) のセットアップ
+
+#### ビルド
+
+```bash
+cd apps/cli
+cargo build --release
+```
+
+ビルド成果物は `apps/cli/target/release/bookmark-rss-cli` に出力される。
+
+#### 設定
+
+設定は **環境変数 > 設定ファイル > デフォルト** の優先順で読み込まれる。
+
+| 環境変数 | 設定ファイルのキー | デフォルト値 | 用途 |
+|---------|------------------|-------------|------|
+| `BOOKMARK_RSS_API_URL` | `api_url` | `http://localhost:3001` | feed サービスの URL |
+| `BOOKMARK_RSS_AUTH_URL` | `auth_url` | `http://localhost:3000` | auth サービスの URL |
+| `BOOKMARK_RSS_CONFIG_DIR` | - | `~/.config/bookmark-rss` (macOS: `~/Library/Application Support/bookmark-rss`) | 設定ディレクトリ |
+
+設定ファイルで永続化する場合:
+
+```bash
+bookmark-rss-cli config set --api-url http://localhost:3001 --auth-url http://localhost:3000
+bookmark-rss-cli config show   # 現在の設定を確認
+```
+
+#### ログイン
+
+デバイスコードフローで認証する。ブラウザが自動で開く。
+
+```bash
+bookmark-rss-cli login
+```
+
+トークンは `<config_dir>/token.json` に保存される。
+
+#### 主要コマンド
+
+```bash
+bookmark-rss-cli feed list                   # フィード一覧
+bookmark-rss-cli feed add <url>              # フィード追加
+bookmark-rss-cli feed remove <id>            # フィード削除
+bookmark-rss-cli feed import <opml-file>     # OPMLインポート
+bookmark-rss-cli article list [--unread]     # 記事一覧
+bookmark-rss-cli article read <id>           # 記事詳細
+bookmark-rss-cli bookmark list               # ブックマーク一覧
+bookmark-rss-cli bookmark add <target>       # ブックマーク追加
+bookmark-rss-cli bookmark remove <id>        # ブックマーク削除
+bookmark-rss-cli bookmark read <id>          # 本文表示 (Markdown)
+bookmark-rss-cli bookmark search <keyword>   # 全文検索
+```
+
 ### テスト
 
 #### ユニットテスト (全サービス)
